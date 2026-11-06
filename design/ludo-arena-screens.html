@@ -1,0 +1,815 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ludo Arena Screens</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<style>
+/* ===== Design tokens (same values as mobile/src/theme.ts and flutter_app/lib/theme.dart) ===== */
+:root {
+  --page: #070A1C;
+  --bg: #0B1026;
+  --sheet: #18204E;
+  --text: #FFFFFF;
+  --dim: #B4BBE0;
+  --muted: #7179A6;
+  --primary: #7C5CFF;
+  --gold: #FFC93C;
+  --gold-text: #3A2600;
+  --success: #2ECC71;
+  --danger: #FF4D6D;
+  --info: #45AAF2;
+  --card-border: rgba(255,255,255,.12);
+  --input: rgba(255,255,255,.08);
+  --red: #EF3B4E;   --red-l: #FF8A96;   --red-d: #A81E2D;
+  --green: #1FB860; --green-l: #7BE3A4; --green-d: #0E7A3C;
+  --yellow: #F8C41D;--yellow-l: #FFE27A;--yellow-d: #B88A00;
+  --blue: #2F7FF0;  --blue-l: #86B7FF;  --blue-d: #1550A8;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0; background: var(--page); color: var(--text);
+  font-family: Roboto, system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ===== Page chrome ===== */
+.page-head { max-width: 1240px; margin: 0 auto; padding: 48px 16px 8px; }
+.page-head h1 { font-size: clamp(30px, 5vw, 46px); font-weight: 900; margin: 0; letter-spacing: .5px; }
+.page-head h1 span { color: var(--gold); }
+.page-head p { color: var(--dim); max-width: 760px; line-height: 1.55; font-size: 16px; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 6px; }
+.legend a {
+  color: var(--dim); text-decoration: none; font-size: 13px; font-weight: 700;
+  padding: 8px 14px; border-radius: 99px; border: 1px solid var(--card-border); background: rgba(255,255,255,.04);
+}
+.legend a:hover { color: var(--gold); border-color: var(--gold); }
+.swatches { display: flex; flex-wrap: wrap; gap: 10px; margin: 14px 0 0; }
+.sw { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+.sw i { width: 22px; height: 22px; border-radius: 7px; display: inline-block; border: 1px solid rgba(255,255,255,.15); }
+section.group { max-width: 1240px; margin: 0 auto; padding: 34px 16px 10px; }
+section.group > h2 { font-size: 22px; font-weight: 900; margin: 0 0 4px; }
+section.group > p { margin: 0 0 22px; color: var(--muted); font-size: 14px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(372px, 1fr)); gap: 34px 22px; justify-items: center; }
+figure { margin: 0; display: flex; flex-direction: column; align-items: center; }
+figcaption { margin-top: 12px; text-align: center; max-width: 340px; }
+figcaption b { display: block; font-size: 15px; }
+figcaption span { color: var(--muted); font-size: 12.5px; line-height: 1.45; }
+footer { text-align: center; color: var(--muted); font-size: 12px; padding: 40px 16px 60px; }
+
+/* ===== Phone frame ===== */
+.phone {
+  width: 360px; height: 760px; border-radius: 44px; padding: 9px; background: #03050C;
+  box-shadow: 0 0 0 1.5px #262C4A, 0 24px 60px rgba(0,0,0,.6);
+  position: relative; flex: none;
+}
+@media (max-width: 400px) { .phone { transform: scale(.9); margin: -38px 0; } }
+.screen {
+  width: 100%; height: 100%; border-radius: 36px; overflow: hidden; position: relative;
+  background: linear-gradient(180deg, #23185E 0%, #121A4A 48%, #0B1026 100%);
+  display: flex; flex-direction: column;
+}
+.glow { position: absolute; border-radius: 50%; pointer-events: none; }
+.status {
+  height: 30px; display: flex; justify-content: space-between; align-items: center;
+  padding: 4px 24px 0; font-size: 12.5px; font-weight: 600; position: relative; z-index: 3; flex: none;
+}
+.status .icons { display: flex; gap: 5px; align-items: center; }
+.content { flex: 1; position: relative; z-index: 2; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.scroll { flex: 1; overflow: hidden; padding: 0 16px; }
+.gesture { height: 18px; display: flex; justify-content: center; align-items: center; flex: none; position: relative; z-index: 3; }
+.gesture i { width: 108px; height: 4px; border-radius: 2px; background: rgba(255,255,255,.5); }
+
+/* ===== Components ===== */
+.hdr { display: flex; align-items: center; padding: 10px 16px; gap: 12px; flex: none; }
+.back {
+  width: 40px; height: 40px; border-radius: 50%; flex: none; display: grid; place-items: center;
+  background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.15);
+}
+.hdr .t { flex: 1; min-width: 0; }
+.hdr .t b { display: block; font-size: 21px; font-weight: 900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hdr .t span { display: block; font-size: 12.5px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+
+.btn {
+  height: 54px; border-radius: 20px; display: flex; align-items: center; justify-content: center; gap: 8px;
+  font-weight: 900; font-size: 16.5px; letter-spacing: .4px; position: relative; overflow: hidden;
+  box-shadow: 0 5px 14px rgba(0,0,0,.35); color: #fff; white-space: nowrap;
+}
+.btn::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 50%; background: rgba(255,255,255,.14); }
+.btn > * { position: relative; }
+.btn.primary { background: linear-gradient(180deg, #9B7BFF, #6A45F5); }
+.btn.gold { background: linear-gradient(180deg, #FFE08A, #FFB81F); color: var(--gold-text); }
+.btn.danger { background: linear-gradient(180deg, #FF7A8F, #E8304F); }
+.btn.success { background: linear-gradient(180deg, #5BE59A, #1FAE5B); }
+.btn.ghost { background: rgba(255,255,255,.06); border: 1.5px solid rgba(255,255,255,.25); box-shadow: none; }
+.btn.ghost::before { display: none; }
+.btn.md { height: 44px; font-size: 14.5px; border-radius: 18px; }
+.btn.sm { height: 34px; font-size: 12.5px; border-radius: 14px; padding: 0 12px; }
+.btn.off { opacity: .45; }
+.gap8 { height: 8px; } .gap10 { height: 10px; } .gap12 { height: 12px; } .gap16 { height: 16px; } .gap20 { height: 20px; }
+
+.glass {
+  border-radius: 22px; border: 1px solid var(--card-border); padding: 15px;
+  background: linear-gradient(135deg, rgba(255,255,255,.10), rgba(255,255,255,.04));
+}
+.glass.hl-gold { border: 1.5px solid var(--gold); }
+.glass.hl-red { border: 1.5px solid var(--danger); }
+
+.lbl { font-size: 11.5px; font-weight: 800; letter-spacing: 1px; color: var(--dim); text-transform: uppercase; margin-bottom: 7px; }
+.field { margin-bottom: 13px; }
+.input {
+  height: 48px; border-radius: 16px; background: var(--input); border: 1.5px solid rgba(255,255,255,.1);
+  display: flex; align-items: center; gap: 10px; padding: 0 14px; font-size: 15.5px; color: #fff;
+}
+.input.focus { border-color: var(--gold); background: rgba(255,201,60,.06); }
+.input .ph { color: var(--muted); }
+
+.chips { display: flex; gap: 8px; margin-bottom: 16px; }
+.chip {
+  flex: 1; min-width: 0; border-radius: 16px; padding: 10px 4px; text-align: center;
+  background: rgba(255,255,255,.07); border: 1.5px solid rgba(255,255,255,.12);
+  font-weight: 800; font-size: 14px; color: var(--dim);
+}
+.chip small { display: block; font-size: 10px; color: var(--muted); font-weight: 600; margin-top: 2px; }
+.chip.on { background: rgba(255,201,60,.16); border-color: var(--gold); color: var(--gold); }
+.chip.on small { color: #FFE3A1; }
+.chip.dis { opacity: .35; }
+
+.pill {
+  display: inline-flex; align-items: center; gap: 5px; border-radius: 99px; padding: 3px 10px; border: 1px solid;
+  font-size: 10.5px; font-weight: 900; letter-spacing: .6px; text-transform: uppercase; white-space: nowrap;
+}
+.pill .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+
+.av { border-radius: 50%; display: grid; place-items: center; flex: none; }
+.av > div {
+  border-radius: 50%; display: grid; place-items: center; font-weight: 900; color: #fff;
+  background: linear-gradient(180deg, #9B7BFF, #6A45F5);
+}
+
+.row { display: flex; align-items: center; gap: 12px; }
+.sec { font-size: 12.5px; font-weight: 800; letter-spacing: 1.2px; color: var(--dim); text-transform: uppercase; margin: 18px 0 10px; }
+.small { font-size: 12px; color: var(--muted); }
+.dim { color: var(--dim); font-size: 13.5px; }
+.list-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,.07); }
+.list-row .nm { font-weight: 800; font-size: 14.5px; }
+.list-row .un { font-size: 12px; color: var(--muted); }
+.grow { flex: 1; min-width: 0; }
+
+.tabbar {
+  height: 62px; flex: none; background: #10163A; border-top: 1px solid rgba(255,201,60,.25);
+  display: flex; align-items: center; position: relative; z-index: 3;
+}
+.tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10.5px; font-weight: 800; color: var(--muted); }
+.tab .ib { padding: 4px 14px; border-radius: 14px; }
+.tab.on { color: var(--gold); }
+.tab.on .ib { background: rgba(255,201,60,.15); }
+
+.overlay { position: absolute; inset: 0; background: rgba(5,8,25,.7); z-index: 5; }
+.sheet {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--sheet);
+  border-top-left-radius: 30px; border-top-right-radius: 30px; border: 1px solid rgba(255,255,255,.12);
+  padding: 10px 18px 26px;
+}
+.sheet .handle { width: 44px; height: 5px; border-radius: 3px; background: rgba(255,255,255,.25); margin: 0 auto 12px; }
+.sheet h3 { margin: 0 0 14px; font-size: 19px; font-weight: 900; }
+
+.toast {
+  position: absolute; left: 12px; right: 12px; top: 40px; z-index: 7; display: flex; align-items: center; gap: 10px;
+  background: #1F2860; border-radius: 22px; border: 1px solid rgba(255,201,60,.45); padding: 12px 13px;
+  box-shadow: 0 10px 26px rgba(0,0,0,.45);
+}
+.toast .em { font-size: 24px; }
+.toast b { display: block; font-size: 14px; }
+.toast span { font-size: 12px; color: var(--dim); }
+.toast .act { background: var(--gold); color: var(--gold-text); border-radius: 99px; padding: 7px 14px; font-weight: 900; font-size: 12.5px; }
+
+/* game */
+.panel {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 7px; border-radius: 16px;
+  border: 2px solid rgba(255,255,255,.12); background: rgba(255,255,255,.06); min-height: 58px;
+}
+.panel.right { flex-direction: row-reverse; text-align: right; }
+.panel .info { flex: 1; min-width: 0; }
+.panel .nm { font-weight: 800; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.panel .meta { display: flex; align-items: center; gap: 4px; font-size: 10.5px; color: var(--dim); margin-top: 3px; white-space: nowrap; }
+.panel.right .meta { justify-content: flex-end; }
+.panel .cd { width: 8px; height: 8px; border-radius: 50%; }
+.panel .roll { color: var(--gold); font-weight: 800; }
+.panel .timer { height: 4px; border-radius: 2px; background: rgba(255,255,255,.15); margin-top: 5px; overflow: hidden; }
+.panel .timer i { display: block; height: 100%; border-radius: 2px; }
+
+.dice-wrap { border-radius: 24px; border: 3px solid; display: grid; place-items: center; background: rgba(255,255,255,.08); }
+.die {
+  background: #fff; border-bottom: 5px solid #C9CDE6; display: grid; grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+}
+.die span { display: grid; place-items: center; }
+.die span i { border-radius: 50%; background: #1B1F3B; display: block; }
+
+.board-frame {
+  padding: 5px; background: #2A1E66; border: 2px solid rgba(255,201,60,.6); box-shadow: 0 10px 24px rgba(0,0,0,.5);
+}
+.tile {
+  border-radius: 22px; padding: 14px; min-height: 118px; position: relative; overflow: hidden; border: 1px solid rgba(255,255,255,.2);
+  display: flex; flex-direction: column;
+}
+.tile .ti { width: 44px; height: 44px; border-radius: 14px; background: rgba(0,0,0,.18); display: grid; place-items: center; margin-bottom: auto; }
+.tile b { font-size: 16px; font-weight: 900; margin-top: 10px; text-shadow: 0 1px 4px rgba(0,0,0,.25); }
+.tile span { font-size: 11.5px; font-weight: 600; color: rgba(255,255,255,.88); }
+.codebox { width: 44px; height: 56px; border-radius: 16px; border: 2px solid rgba(255,255,255,.18); background: rgba(255,255,255,.06); display: grid; place-items: center; font-size: 25px; font-weight: 900; }
+.codebox.on { border-color: var(--gold); }
+.seat { border-radius: 22px; border: 2px solid; padding: 12px 8px; text-align: center; background: rgba(255,255,255,.05); }
+.seat .nm { font-weight: 800; font-size: 13.5px; margin-top: 7px; }
+.mini-bar { height: 8px; border-radius: 4px; background: rgba(255,255,255,.12); overflow: hidden; flex: 1; }
+.mini-bar i { display: block; height: 100%; background: var(--gold); border-radius: 4px; }
+.info-row { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,.06); font-size: 13.5px; }
+.info-row span { color: var(--dim); }
+.info-row b { font-weight: 800; text-align: right; }
+.bracket { display: flex; gap: 10px; overflow: hidden; margin: 0 -16px; padding: 0 16px; }
+.bcol { width: 148px; flex: none; }
+.bcol b.grow { white-space: nowrap; }
+.bcol h4 { margin: 0 0 8px; color: var(--gold); font-size: 14px; font-weight: 900; }
+.bseat { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 10px; margin-top: 4px; background: rgba(255,255,255,.05); font-size: 13px; font-weight: 700; }
+.bseat.win { background: rgba(255,201,60,.18); }
+.bseat.lost { color: var(--muted); text-decoration: line-through; }
+.stats { display: flex; padding: 13px 0; border-radius: 20px; border: 1px solid var(--card-border); background: rgba(255,255,255,.06); }
+.stats div { flex: 1; text-align: center; }
+.stats b { display: block; color: var(--gold); font-size: 21px; font-weight: 900; }
+.stats span { color: var(--dim); font-size: 10.5px; font-weight: 700; }
+.circle-btn { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; }
+</style>
+</head>
+<body>
+
+<!-- Shared pawn gradients (one per Ludo colour), used by every pawn on the page -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs id="pawn-defs"></defs>
+</svg>
+
+<header class="page-head">
+  <h1>Ludo <span>Arena</span> — UI Screens</h1>
+  <p>Every screen of the Ludo FYP mobile app, drawn with the app's own design: the same colours, gradients, components, board geometry and demo data. The React Native app (<code>mobile/</code>) and the Flutter app (<code>flutter_app/</code>) both follow these designs.</p>
+  <nav class="legend" id="legend"></nav>
+  <div class="swatches">
+    <span class="sw"><i style="background:linear-gradient(180deg,#23185E,#0B1026)"></i>Background</span>
+    <span class="sw"><i style="background:#7C5CFF"></i>Primary #7C5CFF</span>
+    <span class="sw"><i style="background:#FFC93C"></i>Gold #FFC93C</span>
+    <span class="sw"><i style="background:#EF3B4E"></i>Red</span>
+    <span class="sw"><i style="background:#1FB860"></i>Green</span>
+    <span class="sw"><i style="background:#F8C41D"></i>Yellow</span>
+    <span class="sw"><i style="background:#2F7FF0"></i>Blue</span>
+    <span class="sw"><i style="background:#2ECC71"></i>Success</span>
+    <span class="sw"><i style="background:#FF4D6D"></i>Danger</span>
+  </div>
+</header>
+
+<main id="groups"></main>
+<footer>Ludo Arena · Final Year Project · UI design reference (static mock-ups with demo data)</footer>
+
+<script>
+/* ================================================================
+   Building blocks. Every screen below is built from these helpers.
+   ================================================================ */
+const LUDO = {
+  red: { main: '#EF3B4E', light: '#FF8A96', dark: '#A81E2D' },
+  green: { main: '#1FB860', light: '#7BE3A4', dark: '#0E7A3C' },
+  yellow: { main: '#F8C41D', light: '#FFE27A', dark: '#B88A00' },
+  blue: { main: '#2F7FF0', light: '#86B7FF', dark: '#1550A8' },
+};
+const GRAD = {
+  green: ['#4BDA88', '#14994C'], gold: ['#FFD95A', '#E6A800'], blue: ['#5FA0FF', '#1E64D6'], red: ['#FF6B7A', '#D9263A'],
+};
+
+// Lucide-style line icons (24 x 24)
+const I = {
+  chevronLeft: '<path d="m15 18-6-6 6-6"/>',
+  chevronRight: '<path d="m9 18 6-6-6-6"/>',
+  settings: '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
+  user: '<circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/>',
+  logIn: '<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" x2="3" y1="12" y2="12"/>',
+  logOut: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/>',
+  userPlus: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/>',
+  userMinus: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="22" x2="16" y1="11" y2="11"/>',
+  bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+  bot: '<path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/>',
+  trophy: '<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>',
+  users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  key: '<path d="M2 18v3c0 .6.4 1 1 1h4v-3h3v-3h2l1.4-1.4a6.5 6.5 0 1 0-4-4Z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/>',
+  crown: '<path d="m2 4 3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14"/>',
+  play: '<polygon points="6 3 20 12 6 21 6 3"/>',
+  swords: '<polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"/><line x1="13" x2="19" y1="19" y2="13"/><line x1="16" x2="20" y1="16" y2="20"/><line x1="19" x2="21" y1="21" y2="19"/><polyline points="14.5 6.5 18 3 21 3 21 6 17.5 9.5"/><line x1="5" x2="9" y1="14" y2="18"/><line x1="7" x2="4" y1="17" y2="20"/><line x1="3" x2="5" y1="19" y2="21"/>',
+  globe: '<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>',
+  home: '<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
+  at: '<circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"/>',
+  lock: '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+  mail: '<rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>',
+  smile: '<circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" x2="9.01" y1="9" y2="9"/><line x1="15" x2="15.01" y1="9" y2="9"/>',
+  wifi: '<path d="M12 20h.01"/><path d="M2 8.82a15 15 0 0 1 20 0"/><path d="M5 12.859a10 10 0 0 1 14 0"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/>',
+  save: '<path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/>',
+  calendar: '<rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/>',
+  clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+  share: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/>',
+  x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
+  search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+  edit: '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/>',
+  zap: '<path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/>',
+  xCircle: '<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>',
+  door: '<path d="M13 4h3a2 2 0 0 1 2 2v14"/><path d="M2 20h3"/><path d="M13 20h9"/><path d="M10 12v.01"/><path d="M13 4.562v16.157a1 1 0 0 1-1.242.97L5 20V5.562a2 2 0 0 1 1.515-1.94l4-1A2 2 0 0 1 13 4.561Z"/>',
+  server: '<rect width="20" height="8" x="2" y="2" rx="2" ry="2"/><rect width="20" height="8" x="2" y="14" rx="2" ry="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/>',
+  file: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>',
+};
+const icon = (name, size = 20, color = 'currentColor', sw = 2.2) =>
+  `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" style="flex:none">${I[name]}</svg>`;
+
+// Phone status bar icons
+const statusBar = (time = '18:24') => `
+  <div class="status"><span>${time}</span><span class="icons">
+    <svg width="15" height="11" viewBox="0 0 16 12"><path d="M8 11.5 0.6 4.1a10.5 10.5 0 0 1 14.8 0Z" fill="#fff"/></svg>
+    <svg width="14" height="11" viewBox="0 0 14 12"><path d="M13 1v10H1Z" fill="#fff"/></svg>
+    <svg width="9" height="14" viewBox="0 0 9 14"><rect x="0.5" y="1.5" width="8" height="12" rx="1.5" fill="#fff"/><rect x="2.5" y="0" width="4" height="2" rx="1" fill="#fff"/></svg>
+  </span></div>`;
+
+const glows = `
+  <div class="glow" style="width:320px;height:320px;top:-120px;left:-140px;background:radial-gradient(circle,rgba(239,59,78,.33),rgba(239,59,78,0) 70%)"></div>
+  <div class="glow" style="width:340px;height:340px;top:150px;right:-170px;background:radial-gradient(circle,rgba(47,127,240,.33),rgba(47,127,240,0) 70%)"></div>
+  <div class="glow" style="width:300px;height:300px;bottom:70px;left:-160px;background:radial-gradient(circle,rgba(31,184,96,.3),rgba(31,184,96,0) 70%)"></div>
+  <div class="glow" style="width:280px;height:280px;bottom:-120px;right:-100px;background:radial-gradient(circle,rgba(248,196,29,.3),rgba(248,196,29,0) 70%)"></div>`;
+
+const tabbar = (active) => {
+  const tabs = [['home', 'Home'], ['trophy', 'Tournaments'], ['users', 'Friends'], ['user', 'Profile']];
+  return `<div class="tabbar">${tabs.map(([ic, label], i) => `
+    <div class="tab ${i === active ? 'on' : ''}"><div class="ib">${icon(ic, i === active ? 23 : 21, 'currentColor', i === active ? 2.6 : 2)}</div>${label}</div>`).join('')}</div>`;
+};
+
+// A full phone: status bar + glows + content (+ tab bar) + gesture bar. `extra` = overlays (sheets, toasts, dialogs).
+const phone = ({ body, tab = null, extra = '', time }) => `
+  <div class="phone"><div class="screen">${glows}${statusBar(time)}
+    <div class="content">${body}</div>${tab !== null ? tabbar(tab) : ''}
+    <div class="gesture"><i></i></div>${extra}
+  </div></div>`;
+
+const header = (title, sub = '', { back = true, right = '' } = {}) => `
+  <div class="hdr">${back ? `<div class="back">${icon('chevronLeft', 24, '#fff')}</div>` : ''}
+    <div class="t"><b>${title}</b>${sub ? `<span>${sub}</span>` : ''}</div>${right}</div>`;
+
+const btn = (title, { v = 'primary', ic, size = '', off = false, style = '' } = {}) =>
+  `<div class="btn ${v} ${size} ${off ? 'off' : ''}" style="${style}">${ic ? icon(ic, size === 'sm' ? 16 : size === 'md' ? 18 : 20) : ''}<span>${title}</span></div>`;
+
+const field = (label, value, { ic, ph = false, focus = false, mono = false } = {}) => `
+  <div class="field">${label ? `<div class="lbl">${label}</div>` : ''}
+    <div class="input ${focus ? 'focus' : ''}">${ic ? icon(ic, 20, focus ? '#FFC93C' : '#7179A6') : ''}<span class="${ph ? 'ph' : ''}" style="${mono ? 'letter-spacing:2px' : ''}">${value}</span></div></div>`;
+
+const chips = (label, opts, on) => `
+  ${label ? `<div class="lbl">${label}</div>` : ''}<div class="chips">${opts.map((o) => {
+    const [text, hint, dis] = Array.isArray(o) ? o : [o];
+    return `<div class="chip ${text === on ? 'on' : ''} ${dis ? 'dis' : ''}">${text}${hint ? `<small>${hint}</small>` : ''}</div>`;
+  }).join('')}</div>`;
+
+const STATUS = {
+  registration: ['Open', '#2ECC71'], in_progress: ['Live', '#FF4D6D'], finished: ['Finished', '#7179A6'], cancelled: ['Cancelled', '#7179A6'],
+  waiting: ['Scheduled', '#45AAF2'], active: ['Playing', '#2ECC71'], eliminated: ['Out', '#7179A6'], champion: ['Champion', '#FFC93C'],
+};
+const pill = (status, label) => {
+  const [text, c] = STATUS[status];
+  return `<span class="pill" style="color:${c};border-color:${c};background:${c}22">${status === 'in_progress' ? '<i class="dot"></i>' : ''}${label || text}</span>`;
+};
+
+const avatar = (content, size = 44, ring = 'rgba(255,255,255,.25)', dim = false) => `
+  <div class="av" style="width:${size + 6}px;height:${size + 6}px;border:2.5px solid ${ring};opacity:${dim ? .45 : 1}">
+    <div style="width:${size}px;height:${size}px;font-size:${/\p{Extended_Pictographic}/u.test(content) ? size * .55 : size * .38}px">${content}</div></div>`;
+
+// ---------- the pawn (same drawing as TokenPiece) ----------
+(function addPawnGradients() {
+  document.getElementById('pawn-defs').innerHTML = Object.entries(LUDO).map(([n, c]) => `
+    <radialGradient id="ph-${n}" cx="40%" cy="35%" r="65%"><stop offset="0" stop-color="${c.light}"/><stop offset=".55" stop-color="${c.main}"/><stop offset="1" stop-color="${c.dark}"/></radialGradient>
+    <linearGradient id="pb-${n}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${c.dark}"/><stop offset=".45" stop-color="${c.main}"/><stop offset="1" stop-color="${c.dark}"/></linearGradient>`).join('');
+})();
+const pawnSvg = (color, size, extra = '') => `
+  <svg width="${size}" height="${size}" viewBox="0 0 100 100" ${extra}>
+    <ellipse cx="50" cy="90" rx="30" ry="7" fill="#000" opacity=".28"/>
+    <ellipse cx="50" cy="82" rx="31" ry="11" fill="${LUDO[color].dark}"/>
+    <path d="M22 80 Q25 58 40 50 L60 50 Q75 58 78 80 Q50 92 22 80 Z" fill="url(#pb-${color})" stroke="#fff" stroke-width="3"/>
+    <circle cx="50" cy="34" r="22" fill="url(#ph-${color})" stroke="#fff" stroke-width="3.5"/>
+    <circle cx="50" cy="34" r="8.5" fill="#fff" opacity=".92"/>
+    <ellipse cx="42" cy="24" rx="6" ry="4" fill="#fff" opacity=".55"/>
+  </svg>`;
+
+const logo = (scale = 1, bounce = true) => `
+  <div style="display:flex;flex-direction:column;align-items:center">
+    <div style="display:flex;gap:8px;align-items:flex-end;height:${66 * scale}px">
+      ${['red', 'green', 'yellow', 'blue'].map((c, i) => `<div style="transform:translateY(${bounce && i === 1 ? -10 : 0}px)">${pawnSvg(c, 44 * scale)}</div>`).join('')}
+    </div>
+    <div style="font-size:${54 * scale}px;font-weight:900;letter-spacing:6px;text-shadow:0 0 18px rgba(124,92,255,.9);line-height:1.1">LUDO</div>
+    <div style="font-size:${18 * scale}px;font-weight:900;color:#FFC93C;letter-spacing:${10 * scale}px;margin-top:-2px">ARENA</div>
+  </div>`;
+
+// ---------- the dice ----------
+const PIPS = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
+const dice = (value, size = 56, glow = '#FFC93C', tilt = 0) => `
+  <div class="dice-wrap" style="width:${size + 18}px;height:${size + 18}px;border-color:${glow};box-shadow:0 0 18px ${glow}99;transform:rotate(${tilt}deg)">
+    <div class="die" style="width:${size}px;height:${size}px;border-radius:${size * .24}px;padding:${size * .13}px">
+      ${Array.from({ length: 9 }, (_, i) => `<span>${PIPS[value].includes(i) ? `<i style="width:${size * .17}px;height:${size * .17}px;${value === 1 ? 'background:#FF4D6D' : ''}"></i>` : ''}</span>`).join('')}
+    </div></div>`;
+
+/* ---------- the Ludo board: same geometry as game/boardLayout ---------- */
+const TRACK = [[6,1],[6,2],[6,3],[6,4],[6,5],[5,6],[4,6],[3,6],[2,6],[1,6],[0,6],[0,7],[0,8],[1,8],[2,8],[3,8],[4,8],[5,8],[6,9],[6,10],[6,11],[6,12],[6,13],[6,14],[7,14],[8,14],[8,13],[8,12],[8,11],[8,10],[8,9],[9,8],[10,8],[11,8],[12,8],[13,8],[14,8],[14,7],[14,6],[13,6],[12,6],[11,6],[10,6],[9,6],[8,5],[8,4],[8,3],[8,2],[8,1],[8,0],[7,0],[6,0]];
+const HOME_COL = { red: [[7,1],[7,2],[7,3],[7,4],[7,5]], green: [[1,7],[2,7],[3,7],[4,7],[5,7]], yellow: [[7,13],[7,12],[7,11],[7,10],[7,9]], blue: [[13,7],[12,7],[11,7],[10,7],[9,7]] };
+const BASE = { red: [0,0], green: [0,9], yellow: [9,9], blue: [9,0] };
+const START = { red: 0, green: 13, yellow: 26, blue: 39 };
+const SAFE = [0, 8, 13, 21, 26, 34, 39, 47];
+const ROT = { red: 3, green: 2, yellow: 1, blue: 0 };
+const HOME_SPOT = { red: [6.55, 7.5], green: [7.5, 6.55], yellow: [8.45, 7.5], blue: [7.5, 8.45] };
+
+function tokenPoint(color, pos, n) {
+  if (pos < 0) { const [r, c] = BASE[color]; return [[c+2, r+2],[c+4, r+2],[c+2, r+4],[c+4, r+4]][(n - 1) % 4]; }
+  if (pos >= 56) { const [x, y] = HOME_SPOT[color]; const s = (n - 2.5) * .28; return color === 'red' || color === 'yellow' ? [x, y + s] : [x + s, y]; }
+  if (pos > 50) { const [r, c] = HOME_COL[color][pos - 51]; return [c + .5, r + .5]; }
+  const [r, c] = TRACK[(START[color] + pos) % 52]; return [c + .5, r + .5];
+}
+function star(cx, cy, o, i) {
+  let p = []; for (let k = 0; k < 10; k++) { const r = k % 2 ? i : o, a = Math.PI / 5 * k - Math.PI / 2; p.push(`${(cx + r * Math.cos(a)).toFixed(2)},${(cy + r * Math.sin(a)).toFixed(2)}`); } return p.join(' ');
+}
+// tokens: [{color, pos, n, movable?}]
+function board(size, tokens, { me = 'red', active = null } = {}) {
+  const S = size / 15, cols = ['red', 'green', 'yellow', 'blue'];
+  const cell = (r, c, fill) => `<rect x="${c*S}" y="${r*S}" width="${S}" height="${S}" fill="${fill}" stroke="#CFC8B8" stroke-width=".8"/>`;
+  let g = `<rect width="${size}" height="${size}" rx="${S*.6}" fill="#FFFDF7"/>`;
+  for (const col of cols) {
+    const [r, c] = BASE[col], on = col === active;
+    g += `<rect x="${c*S}" y="${r*S}" width="${6*S}" height="${6*S}" fill="${LUDO[col].main}"/>
+          <rect x="${(c+1)*S}" y="${(r+1)*S}" width="${4*S}" height="${4*S}" rx="${S*.7}" fill="#fff" stroke="${on ? '#FFC93C' : LUDO[col].dark}" stroke-width="${on ? 4 : 1.5}"/>`;
+    for (const [dr, dc] of [[2,2],[2,4],[4,2],[4,4]]) g += `<circle cx="${(c+dc)*S}" cy="${(r+dr)*S}" r="${S*.62}" fill="${LUDO[col].light}" stroke="${LUDO[col].main}" stroke-width="2"/>`;
+  }
+  TRACK.forEach(([r, c], i) => { const s = cols.find((x) => START[x] === i); g += cell(r, c, s ? LUDO[s].main : '#fff'); });
+  for (const col of cols) HOME_COL[col].forEach(([r, c]) => (g += cell(r, c, LUDO[col].main)));
+  for (const i of SAFE) { const [r, c] = TRACK[i]; const st = Object.values(START).includes(i); g += `<polygon points="${star((c+.5)*S, (r+.5)*S, S*.37, S*.15)}" fill="${st ? 'rgba(255,255,255,.85)' : '#C9C1AE'}"/>`; }
+  const M = 7.5 * S;
+  g += `<polygon points="${6*S},${6*S} ${6*S},${9*S} ${M},${M}" fill="${LUDO.red.main}"/><polygon points="${6*S},${6*S} ${9*S},${6*S} ${M},${M}" fill="${LUDO.green.main}"/>
+        <polygon points="${9*S},${6*S} ${9*S},${9*S} ${M},${M}" fill="${LUDO.yellow.main}"/><polygon points="${6*S},${9*S} ${9*S},${9*S} ${M},${M}" fill="${LUDO.blue.main}"/>
+        <circle cx="${M}" cy="${M}" r="${S*.45}" fill="#fff" opacity=".9"/>`;
+  // tokens (spread when sharing a square), counter-rotated so pawns stay upright
+  const turns = ROT[me], key = (t) => t.pos < 0 ? `b${t.color}${t.n}` : t.pos >= 56 ? `h${t.color}${t.n}` : t.pos > 50 ? `c${t.color}${t.pos}` : `t${(START[t.color] + t.pos) % 52}`;
+  const groups = {}; tokens.forEach((t) => (groups[key(t)] ||= []).push(t));
+  let toks = '';
+  for (const t of [...tokens].sort((a, b) => (a.movable ? 1 : 0) - (b.movable ? 1 : 0))) {
+    const grp = groups[key(t)], crowded = grp.length > 1, ts = S * (crowded ? .78 : 1), spread = crowded ? (grp.indexOf(t) - (grp.length - 1) / 2) * S * .28 : 0;
+    const [x, y] = tokenPoint(t.color, t.pos, t.n), px = x * S - ts / 2 + spread, py = y * S - ts / 2;
+    const rot = `rotate(${-turns * 90} ${px + ts / 2} ${py + ts / 2})`;
+    if (t.movable) toks += `<circle cx="${px + ts/2}" cy="${py + ts/2}" r="${ts*.56}" fill="rgba(255,201,60,.3)" stroke="#FFC93C" stroke-width="3"/>`;
+    toks += `<g transform="${rot}"><svg x="${px}" y="${py}" width="${ts * (t.movable ? 1.12 : 1)}" height="${ts * (t.movable ? 1.12 : 1)}" viewBox="0 0 100 100">${pawnSvg(t.color, 100).replace(/^\s*<svg[^>]*>|<\/svg>\s*$/g, '')}</svg></g>`;
+  }
+  return `<div class="board-frame" style="border-radius:${S*.8+5}px"><svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="display:block;transform:rotate(${turns*90}deg)">${g}${toks}</svg></div>`;
+}
+
+// One player card around the board
+const panel = ({ name, color, meta, roll, turn = false, timer = 0, right = false, emoji, dim = false }) => {
+  const c = LUDO[color];
+  return `<div class="panel ${right ? 'right' : ''}" style="${turn ? `border-color:${c.light};background:${c.main}33;box-shadow:0 0 14px ${c.main}77` : ''}">
+    ${avatar(emoji || name.slice(0, 2).toUpperCase(), 34, c.main, dim)}
+    <div class="info"><div class="nm">${name}</div>
+      <div class="meta">${right ? '' : `<i class="cd" style="background:${c.main}"></i>`}${meta}${roll ? `<span class="roll">🎲 ${roll}</span>` : ''}${right ? `<i class="cd" style="background:${c.main}"></i>` : ''}</div>
+      ${turn && timer ? `<div class="timer"><i style="width:${timer}%;background:${timer < 30 ? '#FF4D6D' : c.light}"></i></div>` : ''}
+    </div></div>`;
+};
+
+const tCard = ({ name, by, status, label, format, when, count, max, live = false }) => `
+  <div class="glass ${live ? 'hl-red' : ''}" style="margin-bottom:12px">
+    <div class="row"><span style="font-size:28px">🏆</span><div class="grow"><b style="font-size:16px">${name}</b><div class="small">by @${by}</div></div>${pill(status, label)}</div>
+    <div style="margin-top:11px;display:grid;gap:6px">
+      <div class="row dim" style="gap:8px">${icon('swords', 15, '#B4BBE0')}${format}</div>
+      <div class="row dim" style="gap:8px">${icon('calendar', 15, '#B4BBE0')}${when}</div>
+    </div>
+    <div class="row" style="margin-top:11px;gap:10px">${icon('users', 15, '#FFC93C')}<div class="mini-bar"><i style="width:${count / max * 100}%"></i></div><b style="font-size:13px">${count}/${max}</b></div>
+  </div>`;
+
+const sheet = (title, inner) => `<div class="overlay"></div><div class="sheet"><div class="handle"></div><h3>${title}</h3>${inner}</div>`;
+
+/* ================================================================
+   The screens
+   ================================================================ */
+const R = 'red', G = 'green', Y = 'yellow', B = 'blue';
+const gameTokens = [
+  { color: R, pos: 8, n: 1, movable: true }, { color: R, pos: -1, n: 2, movable: true }, { color: R, pos: 30, n: 3, movable: true }, { color: R, pos: -1, n: 4 },
+  { color: G, pos: 12, n: 1 }, { color: G, pos: -1, n: 2 }, { color: G, pos: -1, n: 3 }, { color: G, pos: 53, n: 4 },
+  { color: Y, pos: 22, n: 1 }, { color: Y, pos: 5, n: 2 }, { color: Y, pos: -1, n: 3 }, { color: Y, pos: -1, n: 4 },
+  { color: B, pos: 2, n: 1 }, { color: B, pos: -1, n: 2 }, { color: B, pos: -1, n: 3 }, { color: B, pos: 56, n: 4 },
+];
+const allBase = (cols) => cols.flatMap((c) => [1, 2, 3, 4].map((n) => ({ color: c, pos: -1, n })));
+
+const homeBody = (withMatch = true) => `
+  <div class="scroll" style="padding-top:12px">
+    <div class="row" style="margin-bottom:14px">${avatar('🦁', 44, '#FFC93C')}
+      <div class="grow"><div class="dim" style="font-size:12.5px">Hello,</div><b style="font-size:19px">Demo One</b></div>
+      <div style="position:relative;width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.1);display:grid;place-items:center">${icon('bell', 21, '#fff')}
+        <span style="position:absolute;top:3px;right:3px;min-width:18px;height:18px;border-radius:9px;background:#FF4D6D;font-size:11px;font-weight:900;display:grid;place-items:center">2</span></div>
+    </div>
+    ${withMatch ? `<div class="glass hl-gold" style="margin-bottom:14px;padding:13px">
+      <div style="color:#FFC93C;font-weight:800;font-size:12.5px">🏆 Demo Cup · Round 1</div>
+      <b style="font-size:16px;display:block;margin-top:3px">Your match starts in 0m 48s</b>
+      <div class="small" style="margin-top:3px">Join the lobby early: it starts as soon as everyone is there.</div></div>` : ''}
+    <div style="border-radius:28px;padding:18px;text-align:center;background:linear-gradient(135deg,#7C5CFF,#4B2BD6 55%,#2A1680);border:1.5px solid rgba(255,255,255,.25)">
+      <div style="display:flex;justify-content:center;gap:5px">${['red','green','yellow','blue'].map((c) => pawnSvg(c, 40)).join('')}</div>
+      <div style="font-size:25px;font-weight:900;letter-spacing:2px;margin-top:4px">PLAY ONLINE</div>
+      <div style="font-size:13px;color:rgba(255,255,255,.8);margin-top:2px">Get matched with real players in seconds</div>
+      <div style="display:inline-block;margin-top:13px;background:#FFC93C;color:#3A2600;border-radius:99px;padding:10px 30px;font-weight:900;letter-spacing:1px">PLAY NOW</div>
+    </div>
+    <div class="sec">Game modes</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:11px">
+      ${[['vs Computer', 'Practice with bots', 'bot', GRAD.green], ['Tournaments', 'Knockout cups', 'trophy', GRAD.gold], ['Create Room', 'Play with friends', 'users', GRAD.blue], ['Join Room', 'Enter a room code', 'key', GRAD.red]]
+        .map(([t, s, ic, g]) => `<div class="tile" style="background:linear-gradient(135deg,${g[0]},${g[1]})"><div class="ti">${icon(ic, 24, '#fff', 2.4)}</div><b>${t}</b><span>${s}</span></div>`).join('')}
+    </div>
+  </div>`;
+
+const SCREENS = [
+  // ---------------- AUTH ----------------
+  { group: 'auth', title: 'Splash', note: 'Shown while the saved session is restored.',
+    html: phone({ body: `<div style="flex:1;display:grid;place-items:center">${logo()}</div>` }) },
+
+  { group: 'auth', title: 'Welcome', note: 'Guest, log in or create an account. ⚙️ opens the server settings.',
+    html: phone({ body: `
+      <div style="position:absolute;top:6px;right:18px">${icon('settings', 23, '#B4BBE0')}</div>
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center">${logo()}
+        <div class="dim" style="font-size:15px;letter-spacing:1px;margin-top:14px">Roll. Race. Rule the board.</div></div>
+      <div style="padding:0 22px 16px">${btn('Play as Guest', { v: 'gold', ic: 'user' })}<div class="gap12"></div>${btn('Log In', { ic: 'logIn' })}<div class="gap12"></div>${btn('Create Account', { v: 'ghost', ic: 'userPlus' })}
+        <div class="small" style="text-align:center;margin-top:16px;line-height:1.5">Guests can play vs computer, online and join rooms.<br>Create an account for friends, rooms and tournaments.</div>
+        <div class="small" style="text-align:center;margin-top:6px;font-size:11px">Server: http://10.0.2.2:3000</div></div>` }) },
+
+  { group: 'auth', title: 'Play as Guest (sheet)', note: 'Optional name. The same phone always gets the same guest.',
+    html: phone({ body: `<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;margin-top:-140px">${logo(.9)}</div>`,
+      extra: sheet('Play as Guest', field('Your name (optional)', 'Ali', { ic: 'user', focus: true }) + btn("Let's Play", { v: 'gold' })) }) },
+
+  { group: 'auth', title: 'Log In', note: 'Username or email + password. Errors show in red above the button.',
+    html: phone({ body: header('Welcome back', 'Log in to your account') + `<div class="scroll" style="padding-top:8px">
+      <div class="glass">${field('Username or email', 'demo1', { ic: 'at', focus: true })}${field('Password', '•••••••••••', { ic: 'lock' })}${btn('Log In', { ic: 'logIn' })}</div>
+      <div style="text-align:center;margin-top:20px;color:#B4BBE0">New here? <b style="color:#FFC93C">Create an account</b></div>
+      <div class="small" style="text-align:center;margin-top:12px">Demo accounts: demo1 … demo4, password: password123</div></div>` }) },
+
+  { group: 'auth', title: 'Create Account', note: 'Checked on the phone first (same rules as the server).',
+    html: phone({ body: header('Create account', 'Unlock friends, rooms & tournaments') + `<div class="scroll" style="padding-top:6px">
+      <div class="glass">${field('Username', 'ludo_king', { ic: 'at' })}${field('Display name', 'Ali Khan', { ic: 'smile' })}${field('Email', 'ali@example.com', { ic: 'mail' })}${field('Password', '••••••••', { ic: 'lock' })}${field('Confirm password', '••••••••', { ic: 'lock', focus: true })}
+      ${btn('Create Account', { v: 'gold', ic: 'userPlus' })}</div>
+      <div style="text-align:center;margin-top:16px;color:#B4BBE0">Already have an account? <b style="color:#FFC93C">Log in</b></div></div>` }) },
+
+  { group: 'auth', title: 'Server settings', note: 'Emulator / USB phone / Wi-Fi phone. Test calls /api/health.',
+    html: phone({ body: header('Server', 'Where the Ludo backend is running') + `<div class="scroll" style="padding-top:8px">
+      <div class="glass">${chips('Quick pick', [['Emulator', '10.0.2.2'], ['USB phone', 'adb reverse']], 'Emulator')}${field('Server address', 'http://10.0.2.2:3000', { ic: 'globe' })}
+        <div style="color:#2ECC71;font-weight:700;font-size:13.5px;margin-bottom:12px">Connected! Server and database are OK.</div>
+        <div class="row" style="gap:10px">${btn('Test', { v: 'ghost', ic: 'wifi', size: 'md', style: 'flex:1' })}${btn('Save', { v: 'gold', ic: 'save', size: 'md', style: 'flex:1' })}</div></div>
+      <div class="glass" style="margin-top:14px"><b style="font-size:15px">Which address?</b>
+        <div class="dim" style="line-height:1.6;margin-top:6px;font-size:12.5px">• Android emulator: http://10.0.2.2:3000<br>• Phone on the same Wi-Fi: http://YOUR-PC-IP:3000<br>• Phone on USB: adb reverse tcp:3000 tcp:3000 → http://localhost:3000<br>• Change 3000 if the backend uses another PORT.</div></div></div>` }) },
+
+  // ---------------- HOME & PLAY ----------------
+  { group: 'home', title: 'Home', note: 'Invites bell, next tournament match, Play Online, game modes, stats.',
+    html: phone({ tab: 0, body: homeBody(true) }) },
+
+  { group: 'home', title: 'Home — live notification', note: 'In-app toast from the server (invites, match ready, match started, champion).',
+    html: phone({ tab: 0, body: homeBody(false),
+      extra: `<div class="toast"><span class="em">🏆</span><div class="grow"><b>Round 1: your match is ready</b><span>Starts at 18:25 — join the lobby early!</span></div><span class="act">Go</span></div>` }) },
+
+  { group: 'home', title: 'Play Online (sheet)', note: 'Pick a queue: 1 vs 1, 4 players or 2 vs 2 teams.',
+    html: phone({ tab: 0, body: homeBody(false), extra: sheet('Play Online', [['swords', '1 vs 1', '2 players, classic rules'], ['globe', '4 Players', 'Everyone for themselves'], ['users', '2 vs 2 Teams', 'Play with a partner']]
+      .map(([ic, t, s]) => `<div class="glass row" style="margin-bottom:10px">${icon(ic, 26, '#FFC93C')}<div class="grow"><b>${t}</b><div class="small">${s}</div></div>${icon('chevronRight', 22, '#B4BBE0')}</div>`).join('')) }) },
+
+  { group: 'home', title: 'vs Computer setup', note: 'Players, mode, bot difficulty and rule set.',
+    html: phone({ body: header('vs Computer', 'You are red. Bots take the other seats.') + `<div class="scroll" style="padding-top:8px"><div class="glass">
+      ${chips('Players', ['2', '3', '4'], '4')}${chips('Mode', ['Free for all', '2 vs 2'], 'Free for all')}${chips('Bot difficulty', ['😊 Easy', '😈 Hard'], '😊 Easy')}
+      ${chips('Rules', [['Classic', '4 home · 30s'], ['Quick', '2 home · 20s'], ['Demo', '1 home · 10s']], 'Demo')}
+      <div class="small" style="margin-bottom:14px">Tip: "Demo" rules finish fast — only 1 token needs to reach home.</div>${btn('Start Game', { v: 'gold', ic: 'play' })}</div></div>` }) },
+
+  { group: 'home', title: 'Matchmaking', note: 'Searching animation; opens the board as soon as the queue is full.',
+    html: phone({ body: `<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center">
+      <div style="color:#FFC93C;font-weight:900;letter-spacing:2px">1 VS 1</div><div style="font-size:26px;font-weight:900;margin-top:4px">Finding players…</div>
+      <div style="width:240px;height:240px;margin:34px 0;position:relative;display:grid;place-items:center">
+        <div style="position:absolute;inset:0;border-radius:50%;border:2px dashed rgba(255,255,255,.15)"></div>
+        <div style="position:absolute;top:-27px;left:93px">${pawnSvg('red', 54)}</div><div style="position:absolute;right:-27px;top:93px">${pawnSvg('green', 54)}</div>
+        <div style="position:absolute;bottom:-27px;left:93px">${pawnSvg('yellow', 54)}</div><div style="position:absolute;left:-27px;top:93px">${pawnSvg('blue', 54)}</div>
+        <div style="width:118px;height:118px;border-radius:50%;background:rgba(124,92,255,.25);border:2px solid #7C5CFF;display:grid;place-items:center;text-align:center">
+          <div><div style="font-size:32px;font-weight:900">1/2</div><div class="dim">players</div></div></div></div>
+      <div style="color:#B4BBE0;font-weight:800;font-size:17px">0:07</div><div class="small" style="margin-top:6px">Waiting for other players to join this queue.</div></div>
+      <div style="padding:0 22px 16px">${btn('Cancel', { v: 'ghost', ic: 'x' })}</div>` }) },
+
+  // ---------------- GAME ----------------
+  { group: 'game', title: 'Game board — your turn', note: 'Your colour is always bottom-left. Glowing tokens can move. Dice rolled by the server.',
+    html: phone({ body: `
+      <div class="hdr" style="padding-top:4px"><div class="back">${icon('chevronLeft', 24, '#fff')}</div><div class="t"><b style="font-size:17px">vs Computer</b><span>Demo rules · 1 token home to win</span></div></div>
+      <div class="row" style="padding:0 10px;gap:8px">${panel({ name: 'Bot Sara', color: G, meta: 'Computer', roll: 3, emoji: '🤖' })}${panel({ name: 'Bot Zain', color: Y, meta: 'Computer', roll: 5, emoji: '🤖', right: true })}</div>
+      <div style="flex:1;display:grid;place-items:center">${board(318, gameTokens, { me: R, active: R })}</div>
+      <div style="text-align:center;color:#FFC93C;font-weight:800;font-size:15.5px;margin-bottom:8px">Tap a glowing token to move it</div>
+      <div class="row" style="padding:0 10px 6px;gap:6px">${panel({ name: 'You', emoji: 'DE', color: R, meta: 'Player', roll: 6, turn: true, timer: 64 })}
+        <div style="width:70px;display:grid;place-items:center">${dice(6, 46, LUDO.red.main)}</div>${panel({ name: 'Bot Ali', color: B, meta: 'Computer', roll: 2, emoji: '🤖', right: true })}</div>` }) },
+
+  { group: 'game', title: 'Game board — bot is playing', note: 'Turn passes clockwise; the active base gets a gold ring and the dice spins.',
+    html: phone({ body: `
+      <div class="hdr" style="padding-top:4px"><div class="back">${icon('chevronLeft', 24, '#fff')}</div><div class="t"><b style="font-size:17px">Room K7QM2X</b><span>Classic rules · 4 tokens home to win</span></div></div>
+      <div class="row" style="padding:0 10px;gap:8px">${panel({ name: 'Sara', color: G, meta: 'Player', roll: 4 })}${panel({ name: 'Bot Rex', color: Y, meta: 'Computer', emoji: '🤖', right: true, turn: true })}</div>
+      <div style="flex:1;display:grid;place-items:center">${board(318, gameTokens.map((t) => ({ ...t, movable: false })), { me: R, active: Y })}</div>
+      <div style="text-align:center;color:#B4BBE0;font-weight:800;font-size:15px;margin-bottom:8px">Bot Rex is thinking…</div>
+      <div class="row" style="padding:0 10px 6px;gap:6px">${panel({ name: 'You', emoji: 'DE', color: R, meta: 'Player', roll: 6 })}
+        <div style="width:70px;display:grid;place-items:center">${dice(3, 46, LUDO.yellow.main, 18)}</div>${panel({ name: 'Ahmed', color: B, meta: 'Player', roll: 1, right: true })}</div>` }) },
+
+  { group: 'game', title: 'Tournament match lobby', note: 'Countdown to the match time; starts early when everyone is here.',
+    html: phone({ body: `
+      <div class="hdr" style="padding-top:4px"><div class="back">${icon('chevronLeft', 24, '#fff')}</div><div class="t"><b style="font-size:17px">Round 1 · Match 2</b><span>Demo rules · 1 token home to win</span></div></div>
+      <div class="row" style="padding:0 10px;gap:8px"><div style="flex:1"></div>${panel({ name: 'demo3', color: Y, meta: 'Not here yet', right: true, dim: true })}</div>
+      <div style="flex:1;display:grid;place-items:center;position:relative">${board(318, allBase([R, Y]), { me: R })}
+        <div style="position:absolute;inset:0;background:rgba(11,16,38,.55);display:grid;place-items:center;padding:0 22px">
+          <div class="glass hl-gold" style="text-align:center;width:100%;background:linear-gradient(135deg,#2B2F6E,#1D2459)">
+            <div style="color:#FFC93C;font-weight:900">🏆 Round 1 · Match 2</div><div style="font-size:42px;font-weight:900;margin-top:4px">0m 42s</div>
+            <div class="dim" style="font-size:12.5px">Starts at 18:25 — or as soon as everyone is here</div>
+            <div style="display:flex;justify-content:center;gap:22px;margin-top:16px">
+              <div>${avatar('DE', 42, LUDO.red.main)}<div style="font-weight:800;font-size:12px;margin-top:5px">You</div><div style="color:#2ECC71;font-size:11px;font-weight:800">● Ready</div></div>
+              <div>${avatar('DE', 42, LUDO.yellow.main, true)}<div style="font-weight:800;font-size:12px;margin-top:5px">demo3</div><div class="small" style="font-weight:800;font-size:11px">○ Waiting</div></div></div>
+            <div class="small" style="margin-top:14px">Stay on this screen. Absent players are auto-played.</div></div></div></div>
+      <div style="text-align:center;color:#B4BBE0;font-weight:800;font-size:15px;margin-bottom:8px">Waiting for the match to start…</div>
+      <div class="row" style="padding:0 10px 6px;gap:6px">${panel({ name: 'You', emoji: 'DE', color: R, meta: 'Ready' })}<div style="width:70px;display:grid;place-items:center">${dice(6, 46, '#FFC93C')}</div><div style="flex:1"></div></div>` }) },
+
+  { group: 'game', title: 'Match result — victory', note: 'Final ranking with medals. Tournament matches also get "View Tournament".',
+    html: phone({ body: `<div style="flex:1;filter:blur(1px);opacity:.6;display:grid;place-items:center">${board(318, gameTokens.map((t) => ({ ...t, movable: false })), { me: R })}</div>`,
+      extra: `<div class="overlay" style="background:rgba(5,8,25,.78)"></div>
+        <div style="position:absolute;inset:0;z-index:6;display:grid;place-items:center;padding:0 22px">
+          <div style="width:100%;border-radius:30px;padding:20px;text-align:center;background:linear-gradient(180deg,#FFD86B,#F29D00);border:2px solid rgba(255,255,255,.4)">
+            <div style="font-size:60px">🏆</div><div style="font-size:26px;font-weight:900;color:#3A2000">You win! Next round!</div>
+            <div style="margin:16px 0">${[['🥇', R, 'Demo One (You)', '1st', true], ['🥈', Y, 'demo3', '2nd']].map(([m, c, n, p, me]) => `
+              <div class="row" style="background:rgba(0,0,0,.22);border-radius:16px;padding:9px 11px;margin-bottom:8px;${me ? 'border:2px solid #fff' : ''}">
+                <span style="font-size:21px;width:28px">${m}</span><i style="width:12px;height:12px;border-radius:50%;background:${LUDO[c].main}"></i><b class="grow" style="text-align:left">${n}</b><b>${p}</b></div>`).join('')}</div>
+            ${btn('View Tournament', { ic: 'trophy' })}<div class="gap10"></div>${btn('Home', { v: 'ghost', ic: 'home' })}</div></div>` }) },
+
+  // ---------------- ROOMS ----------------
+  { group: 'rooms', title: 'Create Room', note: 'Seats, mode and rules. You get a 6-letter code.',
+    html: phone({ body: header('Create Room', 'Invite friends or share the code') + `<div class="scroll" style="padding-top:8px"><div class="glass">
+      ${chips('Seats', ['2', '3', '4'], '4')}${chips('Mode', ['Free for all', '2 vs 2'], 'Free for all')}${chips('Rules', [['Classic', '4 home · 30s'], ['Quick', '2 home · 20s'], ['Demo', '1 home · 10s']], 'Classic')}
+      ${btn('Create Room', { v: 'gold', ic: 'door' })}</div></div>` }) },
+
+  { group: 'rooms', title: 'Join Room', note: 'Type the 6-letter code (guests can join too).',
+    html: phone({ body: header('Join Room', 'Ask the host for the room code') + `<div class="scroll" style="padding-top:8px"><div class="glass">
+      <div class="lbl">Room code</div><div style="display:flex;justify-content:space-between;margin:10px 0 18px">${'K7QM2'.split('').map((l) => `<div class="codebox">${l}</div>`).join('')}<div class="codebox on"></div></div>
+      ${btn('Join', { v: 'gold', ic: 'logIn', off: true })}</div></div>` }) },
+
+  { group: 'rooms', title: 'Room lobby (host)', note: 'Seats fill live. Host invites friends, fills empty seats with bots and starts.',
+    html: phone({ body: header('Room Lobby', 'Classic rules · Free for all') + `<div class="scroll" style="padding-top:4px">
+      <div class="glass hl-gold" style="text-align:center;padding:12px"><div style="color:#B4BBE0;font-weight:800;letter-spacing:3px;font-size:11.5px">ROOM CODE</div>
+        <div style="color:#FFC93C;font-size:38px;font-weight:900;letter-spacing:8px;margin:4px 0">K7QM2X</div>${btn('Share code', { v: 'ghost', ic: 'share', size: 'sm', style: 'display:inline-flex' })}</div>
+      <div class="sec" style="margin-top:14px">Players (2/4)</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="seat" style="border-color:${LUDO.red.main}">${avatar('DE', 40, LUDO.red.main)}<div class="nm">You</div><div style="color:#FFC93C;font-size:10px;font-weight:900;letter-spacing:1px">HOST</div></div>
+        <div class="seat" style="border-color:${LUDO.green.main}">${avatar('AL', 40, LUDO.green.main)}<div class="nm">Ali</div></div>
+        ${[Y, B].map((c) => `<div class="seat" style="border-color:${LUDO[c].main}"><div style="width:46px;height:46px;border-radius:50%;border:2px dashed ${LUDO[c].main};margin:0 auto;display:grid;place-items:center;color:#7179A6;font-weight:900;font-size:20px">?</div><div class="nm" style="color:#7179A6;font-weight:600">Waiting…</div></div>`).join('')}
+      </div>
+      <div class="glass" style="margin-top:12px;padding:12px">${chips('2 empty seats', ['🤖 Fill with bots', 'Leave empty'], '🤖 Fill with bots')}
+        ${btn('Invite Friends', { v: 'ghost', ic: 'userPlus', size: 'md' })}<div class="gap8"></div>${btn('Start Game', { v: 'gold', ic: 'play', size: 'md' })}</div></div>` }) },
+
+  { group: 'rooms', title: 'Invite friends (sheet)', note: 'Used by rooms and tournaments. Friends only.',
+    html: phone({ body: header('Room Lobby', 'Classic rules · Free for all') + `<div class="scroll"><div class="glass hl-gold" style="text-align:center"><div style="color:#FFC93C;font-size:38px;font-weight:900;letter-spacing:8px">K7QM2X</div></div></div>`,
+      extra: sheet('Invite friends', [['🐯', 'Sara', 'demo2', 'Invited ✓', 'success'], ['🐼', 'Ahmed', 'demo3', 'Invite', 'gold'], ['🦊', 'Fatima', 'fatima_k', 'Invite', 'gold']]
+        .map(([a, n, u, b, v]) => `<div class="list-row">${avatar(a, 36)}<div class="grow"><div class="nm">${n}</div><div class="un">@${u}</div></div>${btn(b, { v, size: 'sm', off: v === 'success' })}</div>`).join('')) }) },
+
+  // ---------------- TOURNAMENTS ----------------
+  { group: 'tour', title: 'Tournaments — browse', note: 'Open and live tournaments. Anyone registered can create one.',
+    html: phone({ tab: 1, body: header('Tournaments', '', { back: false, right: btn('Create', { v: 'gold', ic: 'plus', size: 'sm' }) }) + `
+      <div style="padding:0 16px">${chips('', ['Browse', 'Mine', 'Matches (1)'], 'Browse')}</div><div class="scroll">
+      ${tCard({ name: 'Demo Cup', by: 'demo1', status: 'registration', format: '1 vs 1 · Demo', when: 'Starts in 23h 31m', count: 3, max: 4 })}
+      ${tCard({ name: 'Friday Night Cup', by: 'ali_k', status: 'in_progress', label: 'Live · R2', format: '4 players · Classic', when: 'Today, 18:00', count: 8, max: 8, live: true })}
+      ${tCard({ name: 'Weekend Clash', by: 'sara22', status: 'registration', format: '1 vs 1 · Quick', when: 'Starts in 1d 3h', count: 5, max: 16 })}</div>` }) },
+
+  { group: 'tour', title: 'Tournaments — my matches', note: 'My waiting / live tournament matches with their start time.',
+    html: phone({ tab: 1, body: header('Tournaments', '', { back: false, right: btn('Create', { v: 'gold', ic: 'plus', size: 'sm' }) }) + `
+      <div style="padding:0 16px">${chips('', ['Browse', 'Mine', 'Matches (2)'], 'Matches (2)')}</div><div class="scroll">
+      <div class="glass hl-red" style="margin-bottom:12px"><div class="row"><b class="grow" style="font-size:16px">Friday Night Cup</b>${pill('in_progress')}</div>
+        <div style="color:#FFC93C;font-weight:800;margin-top:6px">Round 2 · Match 1</div><div class="dim" style="margin-top:3px">Playing now — tap to join!</div></div>
+      <div class="glass hl-gold"><div class="row"><b class="grow" style="font-size:16px">Demo Cup</b>${pill('waiting')}</div>
+        <div style="color:#FFC93C;font-weight:800;margin-top:6px">Round 1 · Match 2</div><div class="dim" style="margin-top:3px">Starts in 0m 48s (18:25)</div></div></div>` }) },
+
+  { group: 'tour', title: 'Tournament — registration (creator)', note: 'Info, join / invite / leave and the creator controls: edit, start now, cancel, remove players.',
+    html: phone({ body: header('Demo Cup', 'by @demo1 (you)', { right: pill('registration') }) + `<div class="scroll" style="padding-top:4px">
+      <div class="glass" style="padding:13px"><div style="font-size:14px;margin-bottom:8px">1v1 knockout: semi-finals and a final</div>
+        ${[['Format', '1 vs 1 knockout'], ['Rules', 'Demo'], ['Players', '3 / 4'], ['Starts', 'Tomorrow, 18:00'], ['Countdown', '23h 31m'], ['Break between rounds', '1 min']].map(([l, v]) => `<div class="info-row"><span>${l}</span><b>${v}</b></div>`).join('')}</div>
+      <div class="gap12"></div>${btn('Invite Friends', { ic: 'userPlus', size: 'md' })}<div class="gap8"></div>${btn('Leave Tournament', { v: 'ghost', ic: 'logOut', size: 'md' })}
+      <div class="glass" style="margin-top:12px;padding:13px"><b style="color:#FFC93C">👑 Creator controls</b><div class="small" style="margin:5px 0 9px">It starts by itself at the start time, or start it now.</div>
+        <div class="row" style="gap:10px">${btn('Edit', { v: 'ghost', ic: 'edit', size: 'md', style: 'flex:1' })}${btn('Start now', { v: 'success', ic: 'zap', size: 'md', style: 'flex:1' })}</div>
+        <div class="gap8"></div>${btn('Cancel Tournament', { v: 'danger', ic: 'xCircle', size: 'md' })}</div>
+      <div class="sec">Players (3)</div>
+      <div class="list-row">${avatar('🦁', 34)}<div class="grow"><div class="nm">Demo One (you) 👑</div><div class="un">@demo1</div></div></div>
+      <div class="list-row">${avatar('🐯', 34)}<div class="grow"><div class="nm">Sara</div><div class="un">@demo2</div></div>${icon('x', 22, '#FF4D6D')}</div></div>` }) },
+
+  { group: 'tour', title: 'Tournament — live with bracket', note: 'My next match card, rounds with match times, winners, creator match controls.',
+    html: phone({ body: header('Friday Night Cup', 'by @ali_k', { right: pill('in_progress') }) + `<div class="scroll" style="padding-top:4px">
+      <div class="glass hl-red" style="padding:13px"><div style="color:#FFC93C;font-weight:900;font-size:11.5px;letter-spacing:1px">YOUR MATCH · ROUND 2</div>
+        <div style="font-size:23px;font-weight:900;margin:3px 0">Live now!</div><div class="small">Enter the lobby early: the match starts as soon as everyone is there.</div><div class="gap10"></div>${btn('Play Now', { v: 'gold', ic: 'play', size: 'md' })}</div>
+      <div class="sec">Bracket</div>
+      <div class="bracket">
+        <div class="bcol"><h4>Round 1</h4>
+          <div class="glass" style="padding:11px;margin-bottom:10px"><div class="row"><b class="grow" style="font-size:13.5px">Match 1</b>${pill('finished')}</div>
+            <div class="small row" style="gap:5px;margin:5px 0 6px">${icon('clock', 13, '#7179A6')}Today, 18:01</div>
+            <div class="bseat win"><i class="cd" style="width:10px;height:10px;border-radius:50%;background:${LUDO.red.main}"></i><span class="grow" style="color:#FFC93C">You</span>${icon('crown', 16, '#FFC93C')}</div>
+            <div class="bseat lost"><i style="width:10px;height:10px;border-radius:50%;background:${LUDO.yellow.main}"></i>Ahmed</div></div>
+          <div class="glass" style="padding:11px"><div class="row"><b class="grow" style="font-size:13.5px">Match 2</b>${pill('finished')}</div>
+            <div class="bseat win" style="margin-top:8px"><i style="width:10px;height:10px;border-radius:50%;background:${LUDO.red.main}"></i><span class="grow">Sara</span>${icon('crown', 16, '#FFC93C')}</div>
+            <div class="bseat lost"><i style="width:10px;height:10px;border-radius:50%;background:${LUDO.yellow.main}"></i>Fatima</div></div></div>
+        <div class="bcol"><h4>Final</h4>
+          <div class="glass hl-gold" style="padding:11px"><div class="row"><b class="grow" style="font-size:13.5px">Match 1</b>${pill('in_progress')}</div>
+            <div class="small row" style="gap:5px;margin:5px 0 6px">${icon('clock', 13, '#7179A6')}Today, 18:09</div>
+            <div class="bseat"><i style="width:10px;height:10px;border-radius:50%;background:${LUDO.red.main}"></i><span style="color:#FFC93C">You</span></div>
+            <div class="bseat"><i style="width:10px;height:10px;border-radius:50%;background:${LUDO.yellow.main}"></i>Sara</div>
+            <div class="gap8"></div>${btn('Play now', { v: 'gold', ic: 'play', size: 'sm' })}</div></div>
+      </div></div>` }) },
+
+  { group: 'tour', title: 'Tournament — champion', note: 'Finished tournament: champion card, eliminated players, full bracket.',
+    html: phone({ body: header('Demo Cup', 'by @demo1 (you)', { right: pill('finished') }) + `<div class="scroll" style="padding-top:4px">
+      <div class="glass hl-gold" style="text-align:center;padding:16px"><div style="font-size:46px">🏆</div><div style="color:#FFC93C;font-weight:900;letter-spacing:4px">CHAMPION</div>
+        <div style="display:flex;justify-content:center;margin:10px 0 6px">${avatar('🐯', 62, '#FFC93C')}</div><b style="font-size:21px">Sara</b></div>
+      <div class="sec">Players (4)</div>
+      ${[['🐯', 'Sara', 'demo2', 'champion', ''], ['🦁', 'Demo One (you) 👑', 'demo1 · out in round 2', 'eliminated', ''], ['🐼', 'Ahmed', 'demo3 · out in round 1', 'eliminated', ''], ['🦊', 'Fatima', 'demo4 · out in round 1', 'eliminated', '']]
+        .map(([a, n, u, s]) => `<div class="list-row">${avatar(a, 34, s === 'champion' ? '#FFC93C' : undefined, s === 'eliminated')}<div class="grow"><div class="nm">${n}</div><div class="un">@${u}</div></div>${pill(s)}</div>`).join('')}</div>` }) },
+
+  { group: 'tour', title: 'New tournament form', note: 'Name, size, 1v1 or 4-player, rules, start time (date + time picker), break, play or organise.',
+    html: phone({ body: header('New Tournament', 'You are the organiser') + `<div class="scroll" style="padding-top:4px"><div class="glass" style="padding:13px">
+      ${field('Name', 'Friday Night Cup', { ic: 'trophy' })}
+      ${chips('Players', ['2', '4', '8', '16'], '8')}${chips('Match format', [['1 vs 1', 'classic knockout'], ['4 players', 'winner advances']], '1 vs 1')}
+      <div style="color:#FFC93C;font-weight:700;font-size:12.5px;margin:-8px 0 12px">≈ 3 rounds to crown a champion</div>
+      <div class="lbl">Start time</div>${btn('Today, 20:00', { v: 'ghost', ic: 'calendar', size: 'md' })}
+      <div class="row" style="gap:6px;margin:8px 0 14px">${['+5 min', '+15 min', '+1 hour'].map((q) => btn(q, { v: 'ghost', size: 'sm', style: 'flex:1' })).join('')}</div>
+      ${chips('Break between rounds', ['1 min', '2 min', '5 min', '10 min'], '2 min')}
+      ${btn('Create Tournament', { v: 'gold', ic: 'save' })}</div></div>` }) },
+
+  // ---------------- SOCIAL ----------------
+  { group: 'social', title: 'Invitations', note: 'Tournament and room invites: join or decline.',
+    html: phone({ body: header('Invitations') + `<div class="scroll">
+      <div class="sec" style="margin-top:4px">Tournaments</div>
+      <div class="glass hl-gold"><b style="font-size:16px">🏆 Demo Cup</b><div class="dim" style="margin-top:4px">Demo One invited you · 1 vs 1 · 4 players</div><div class="dim">Starts Tomorrow, 18:00</div>
+        <div class="row" style="gap:10px;margin-top:13px">${btn('Decline', { v: 'ghost', ic: 'x', size: 'md', style: 'flex:1' })}${btn('Join', { v: 'gold', ic: 'check', size: 'md', style: 'flex:1' })}</div></div>
+      <div class="sec">Rooms</div>
+      <div class="glass"><b style="font-size:16px">🎲 Room K7QM2X</b><div class="dim" style="margin-top:4px">Ali wants to play with you</div>
+        <div class="row" style="gap:10px;margin-top:13px">${btn('Decline', { v: 'ghost', ic: 'x', size: 'md', style: 'flex:1' })}${btn('Join Room', { v: 'gold', ic: 'check', size: 'md', style: 'flex:1' })}</div></div></div>` }) },
+
+  { group: 'social', title: 'Friends', note: 'Friends list (remove), requests, and search to add.',
+    html: phone({ tab: 2, body: header('Friends', '', { back: false }) + `<div style="padding:0 16px">${chips('', ['Friends (3)', 'Requests (1)', 'Add'], 'Friends (3)')}</div><div class="scroll">
+      ${[['🐯', 'Sara', 'demo2'], ['🐼', 'Ahmed', 'demo3'], ['🦊', 'Fatima', 'fatima_k']].map(([a, n, u]) => `<div class="list-row">${avatar(a, 38)}<div class="grow"><div class="nm">${n}</div><div class="un">@${u}</div></div>${icon('userMinus', 22, '#7179A6')}</div>`).join('')}</div>` }) },
+
+  { group: 'social', title: 'Friend requests', note: 'Accept or reject received requests; see pending sent ones.',
+    html: phone({ tab: 2, body: header('Friends', '', { back: false }) + `<div style="padding:0 16px">${chips('', ['Friends (3)', 'Requests (1)', 'Add'], 'Requests (1)')}</div><div class="scroll">
+      <div class="sec" style="margin-top:4px">Received</div>
+      <div class="list-row">${avatar('🐸', 38)}<div class="grow"><div class="nm">Usman</div><div class="un">@usman_99</div></div>
+        <div class="circle-btn" style="background:#FF4D6D">${icon('x', 18, '#fff')}</div><div class="circle-btn" style="background:#2ECC71">${icon('check', 18, '#fff')}</div></div>
+      <div class="sec">Sent</div>
+      <div class="list-row">${avatar('HA', 38)}<div class="grow"><div class="nm">Hamza</div><div class="un">@hamza_l</div></div><b style="color:#7179A6">Pending</b></div></div>` }) },
+
+  { group: 'social', title: 'Add friends', note: 'Search by username as you type.',
+    html: phone({ tab: 2, body: header('Friends', '', { back: false }) + `<div style="padding:0 16px">${chips('', ['Friends (3)', 'Requests', 'Add'], 'Add')}</div><div class="scroll">
+      ${field('', 'demo', { ic: 'search', focus: true })}
+      <div class="list-row">${avatar('🐯', 38)}<div class="grow"><div class="nm">Sara</div><div class="un">@demo2</div></div><b style="color:#7179A6">Friends</b></div>
+      <div class="list-row">${avatar('DE', 38)}<div class="grow"><div class="nm">demo4</div><div class="un">@demo4</div></div>${btn('Add', { v: 'gold', ic: 'userPlus', size: 'sm' })}</div></div>` }) },
+
+  { group: 'social', title: 'Profile', note: 'Avatar, stats (played, won, win rate, cups), recent matches, settings, log out.',
+    html: phone({ tab: 3, body: header('Profile', '', { back: false }) + `<div class="scroll">
+      <div class="glass" style="text-align:center"><div style="display:flex;justify-content:center">${avatar('🦁', 78, '#FFC93C')}</div><b style="font-size:22px;display:block;margin-top:8px">Demo One</b><div class="dim">@demo1</div>
+        <div style="display:flex;justify-content:center;margin-top:10px">${btn('Edit profile', { v: 'ghost', ic: 'edit', size: 'sm' })}</div></div>
+      <div class="stats" style="margin-top:12px"><div><b>24</b><span>Played</span></div><div><b>15</b><span>Won</span></div><div><b>63%</b><span>Win rate</span></div><div><b>2</b><span>🏆 Cups</span></div></div>
+      <div class="sec">Recent matches</div>
+      ${[[R, 'Tournament', 'Today, 18:05', '🏆 Won', true], [B, 'vs Computer', 'Today, 17:40', '2nd'], [G, 'Online', 'Yesterday, 21:10', '🏆 Won', true]].map(([c, t, d, p, w]) => `
+        <div class="list-row"><i style="width:12px;height:12px;border-radius:50%;background:${LUDO[c].main}"></i><div class="grow"><div class="nm">${t}</div><div class="un">${d}</div></div><b style="color:${w ? '#FFC93C' : '#B4BBE0'}">${p}</b></div>`).join('')}</div>` }) },
+
+  { group: 'social', title: 'Edit profile (sheet)', note: 'Pick an emoji avatar and change the display name.',
+    html: phone({ tab: 3, body: header('Profile', '', { back: false }),
+      extra: sheet('Edit profile', `<div class="lbl">Pick an avatar</div>
+        <div style="display:flex;flex-wrap:wrap;gap:9px;margin-bottom:16px">${['🦁', '🐯', '🐼', '🦊', '🐸', '🐵', '🐨', '🐙', '🦄', '🐲', '🤖', '👑'].map((a, i) =>
+          `<div style="width:46px;height:46px;border-radius:50%;display:grid;place-items:center;font-size:25px;background:${i === 0 ? 'rgba(255,201,60,.18)' : 'rgba(255,255,255,.08)'};border:2px solid ${i === 0 ? '#FFC93C' : 'transparent'}">${a}</div>`).join('')}</div>
+        ${field('Display name', 'Demo One', { focus: true })}${btn('Save', { v: 'gold', ic: 'save' })}`) }) },
+
+  { group: 'social', title: 'Leaderboard', note: 'Podium for the top 3, then the top 20 by wins.',
+    html: phone({ body: header('Leaderboard', 'Most wins') + `<div class="scroll">
+      <div style="display:flex;align-items:flex-end;height:212px;margin-bottom:14px">
+        ${[['🐯', 'Sara', 2, 18, '#C9D1E8', 66, 52], ['🦁', 'Demo One', 1, 21, '#FFC93C', 90, 66], ['🐼', 'Ahmed', 3, 12, '#E39A5B', 50, 52]].map(([a, n, p, w, c, h, s]) => `
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center"><div style="font-size:24px">${p === 1 ? '👑' : '&nbsp;'}</div>${avatar(a, s, c)}
+            <b style="font-size:13px;margin:5px 0">${n}</b><div style="width:86%;height:${h}px;background:${c};border-radius:14px 14px 0 0;display:grid;place-items:center;color:#2A1B00;text-align:center">
+            <div><div style="font-size:24px;font-weight:900">${p}</div><div style="font-size:10.5px;font-weight:800">${w} wins</div></div></div></div>`).join('')}</div>
+      ${[['1', '🦁', 'Demo One', 'demo1 · 30 played', 21, true], ['2', '🐯', 'Sara', 'demo2 · 26 played', 18], ['3', '🐼', 'Ahmed', 'demo3 · 20 played', 12], ['4', '🦊', 'Fatima', 'fatima_k · 15 played', 9]].map(([r, a, n, u, w, me]) => `
+        <div class="row" style="padding:10px;border-radius:16px;background:rgba(255,255,255,.05);margin-bottom:8px;${me ? 'border:1.5px solid #FFC93C' : ''}">
+          <b style="width:20px;color:#B4BBE0">${r}</b>${avatar(a, 32)}<div class="grow"><div style="font-weight:800">${n}</div><div class="small">@${u}</div></div><b style="color:#FFC93C;font-size:19px">${w}</b></div>`).join('')}</div>` }) },
+];
+
+const GROUPS = [
+  ['auth', 'Start & account', 'First launch, guest play, login, sign up and the server address.'],
+  ['home', 'Home & play', 'The home screen, live notifications and starting a game.'],
+  ['game', 'The game', 'The Ludo board, dice, turn timer, tournament lobby and results.'],
+  ['rooms', 'Private rooms', 'Create a room, join by code, the lobby and inviting friends.'],
+  ['tour', 'Tournaments', 'Browse, my matches, creator controls, the live bracket, champion and the create form.'],
+  ['social', 'Friends & profile', 'Invitations, friends, requests, search, profile and the leaderboard.'],
+];
+
+// Render all groups, the jump-to links and number the screens
+let n = 0;
+document.getElementById('groups').innerHTML = GROUPS.map(([id, title, sub]) => `
+  <section class="group" id="${id}"><h2>${title}</h2><p>${sub}</p><div class="grid">
+    ${SCREENS.filter((s) => s.group === id).map((s) => `<figure>${s.html}<figcaption><b>${++n}. ${s.title}</b><span>${s.note}</span></figcaption></figure>`).join('')}
+  </div></section>`).join('');
+document.getElementById('legend').innerHTML = GROUPS.map(([id, title]) => `<a href="#${id}">${title}</a>`).join('') +
+  `<a style="pointer-events:none;border-color:transparent">${n} screens</a>`;
+</script>
+</body>
+</html>
