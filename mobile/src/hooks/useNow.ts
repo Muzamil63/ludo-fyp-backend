@@ -1,0 +1,11 @@
+// The current time, updated every second (for countdowns and turn timers).
+import { useEffect, useState } from 'react';
+
+export function useNow(intervalMs = 1000) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), intervalMs);
+    return () => clearInterval(id);
+  }, [intervalMs]);
+  return now;
+}

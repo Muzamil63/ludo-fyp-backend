@@ -29,6 +29,12 @@ module.exports = function registerGameHandlers(io, socket) {
     return state;
   });
 
+  // Leaving the board screen: stop receiving this match's events (the match itself goes on).
+  on(socket, 'match:leave', async ({ match_id }) => {
+    socket.leave(`match:${toId(match_id, 'match_id')}`);
+    return { left: true };
+  });
+
   on(socket, 'game:roll', async ({ match_id }) => {
     const { matchId, seat } = await mySeat(match_id);
     const result = await gameManager.rollDice(matchId, seat.seat_no);

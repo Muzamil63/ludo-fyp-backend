@@ -3,6 +3,7 @@
 Backend for the **Online Multiplayer Ludo** mobile game (Final Year Project).
 Stack: **Node.js + Express 5 + Socket.IO + MySQL**, plain JavaScript (CommonJS).
 All backend code lives in [backend/](backend/). Full build plan, SQL schema and API details: [BACKEND_PLAN.md](BACKEND_PLAN.md).
+The **React Native app** lives in [mobile/](mobile/) ([mobile/CLAUDE.md](mobile/CLAUDE.md)). The same app written in **Flutter** lives in [flutter_app/](flutter_app/) ([flutter_app/CLAUDE.md](flutter_app/CLAUDE.md)). Keep the two apps the same when one changes. The rules below are for the backend.
 
 ---
 
@@ -293,12 +294,13 @@ On connect, the server puts the socket in room `player:<player_id>` for personal
 | Event | Payload | Notes |
 |-------|---------|-------|
 | `match:join` | `{ match_id }` | seat owners only. Joins the socket room and replies with the state. Also used for the room lobby. |
+| `match:leave` | `{ match_id }` | stop getting this match's events (the app sends it when the board screen closes) |
 | `game:roll` | `{ match_id }` | only on your turn, before rolling |
 | `game:move` | `{ match_id, token_id }` | token must be in the `valid_token_ids` from the last roll |
 | `queue:join` | `{ queue_key }` | `"ffa2"`, `"ffa4"` or `"2v2"` |
 | `queue:leave` | `{}` | disconnecting also removes you from the queue |
 
-**Server → client:**
+**Server → client.** Every event sent to `match:<id>` also carries `match_id` (added by `gameManager.emitToMatch`), so the app can ignore events from other matches.
 
 | Event | Sent to | Payload |
 |-------|---------|---------|

@@ -14,9 +14,10 @@ const C = require('./constants');
 
 const timers = new Map(); // match_id -> { timeout, deadline }
 
+// Every match event carries match_id, so an app that was in several matches knows which one it is about.
 function emitToMatch(matchId, event, data) {
   const io = getIO();
-  if (io) io.to(`match:${matchId}`).emit(event, data);
+  if (io) io.to(`match:${matchId}`).emit(event, { match_id: matchId, ...data });
 }
 
 function clearTimer(matchId) {

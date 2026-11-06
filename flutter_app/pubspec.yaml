@@ -1,0 +1,23 @@
+name: ludo_arena
+description: Ludo Arena — Flutter app for the Ludo FYP (online multiplayer Ludo, same backend as the React Native app).
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.5.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.2.0               # REST API calls
+  socket_io_client: ^3.0.0   # live game (Socket.IO v4 server)
+  shared_preferences: ^2.2.0 # remember login token, guest device id, server address
+  provider: ^6.1.0           # share the login state with all screens
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
