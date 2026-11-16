@@ -6,7 +6,7 @@ const botAI = require('../src/game/botAI');
 
 const CLASSIC = {
   six_to_unlock: 1, extra_turn_on_six: 1, extra_turn_on_capture: 1, extra_turn_on_home: 1,
-  capture_enabled: 1, tokens_to_win: 4,
+  capture_enabled: 1, tokens_to_win: 4, tries_when_all_home: 3, six_boost_after: 6,
 };
 const QUICK = { ...CLASSIC, six_to_unlock: 0, tokens_to_win: 1 };
 
@@ -123,25 +123,6 @@ test('ranking: 2v2 winning team is 1, other team is 2', () => {
   assert.deepEqual(ranking.map((r) => r.finish_position), [2, 1, 2, 1]);
 });
 
-test('tournament groups: 1v1 pairs players, odd one out makes a 3-player match (no byes)', () => {
-  const sizes = (n, per) => engine.makeTournamentGroups([...Array(n).keys()], per).map((g) => g.length);
-  assert.deepEqual(sizes(8, 2), [2, 2, 2, 2]);
-  assert.deepEqual(sizes(4, 2), [2, 2]);
-  assert.deepEqual(sizes(2, 2), [2]);
-  assert.deepEqual(sizes(5, 2), [3, 2]);
-  assert.deepEqual(sizes(3, 2), [3]);
-});
-
-test('tournament groups: 4-player matches use as few matches as possible, never 1 player alone', () => {
-  const sizes = (n, per) => engine.makeTournamentGroups([...Array(n).keys()], per).map((g) => g.length);
-  assert.deepEqual(sizes(16, 4), [4, 4, 4, 4]);
-  assert.deepEqual(sizes(8, 4), [4, 4]);
-  assert.deepEqual(sizes(5, 4), [3, 2]);
-  assert.deepEqual(sizes(2, 4), [2]);
-  // every player is in exactly one group
-  assert.deepEqual(engine.makeTournamentGroups([1, 2, 3, 4, 5, 6], 4).flat().sort(), [1, 2, 3, 4, 5, 6]);
-});
-
 test('bot (hard) prefers a capture', () => {
   const mover = { seat_no: 1, color: 'red', team_no: null };
   const victim = tok(2, 'green', 44); // global 5
@@ -166,4 +147,38 @@ test('bot (hard) gives no capture bonus when the rule set has capture off', () =
 test('bot (easy) always returns one of the valid moves', () => {
   const moves = [{ token_id: 1, from: 0, to: 3 }, { token_id: 2, from: 4, to: 7 }];
   for (let i = 0; i < 20; i++) assert.ok(moves.includes(botAI.chooseMove(moves, { seat_no: 1, color: 'red' }, [], 'easy')));
+});
+
+test('3 tries at home: all tokens in base -> 2 more tries, then 1, then the turn passes', () => {
+  const base = [tok(1, 'red', -1), tok(1, 'red', -1), tok(1, 'red', -1), tok(1, 'red', -1)];
+  assert.equal(engine.triesLeftAfterMiss(base, 0, CLASSIC), 2);
+  assert.equal(engine.triesLeftAfterMiss(base, 1, CLASSIC), 1);
+  assert.equal(engine.triesLeftAfterMiss(base, 2, CLASSIC), 0);
+});
+
+test('3 tries at home: no extra try with a token on the board, or when the rule is off', () => {
+  const oneOut = [tok(1, 'red', 5), tok(1, 'red', -1), tok(1, 'red', -1), tok(1, 'red', -1)];
+  assert.equal(engine.triesLeftAfterMiss(oneOut, 0, CLASSIC), 0);
+  const homeAndBase = [tok(1, 'red', 56), tok(1, 'red', -1)]; // finished tokens are not on the board
+  assert.equal(engine.triesLeftAfterMiss(homeAndBase, 0, CLASSIC), 2);
+  const base = [tok(1, 'red', -1)];
+  assert.equal(engine.triesLeftAfterMiss(base, 0, { ...CLASSIC, tries_when_all_home: 1 }), 0);
+});
+
+test('dice: fair 1..6 before the bad-luck limit', () => {
+  const seen = new Set();
+  for (let i = 0; i < 600; i++) seen.add(engine.rollDiceValue(5, CLASSIC, require('node:crypto').randomInt));
+  assert.deepEqual([...seen].sort(), [1, 2, 3, 4, 5, 6]);
+});
+
+test('dice: after 6 rolls without a 6, a 6 is 1 in 3 (and off when six_boost_after = 0)', () => {
+  // fake randomInt: picks the lowest number, so the boosted branch returns 6
+  const lowest = (min) => min;
+  assert.equal(engine.rollDiceValue(6, CLASSIC, lowest), 6);
+  assert.equal(engine.rollDiceValue(6, { ...CLASSIC, six_boost_after: 0 }, lowest), 1);
+  // statistically: about a third of boosted rolls are 6
+  const crypto = require('node:crypto');
+  let sixes = 0;
+  for (let i = 0; i < 30000; i++) if (engine.rollDiceValue(9, CLASSIC, crypto.randomInt) === 6) sixes++;
+  assert.ok(sixes / 30000 > 0.3 && sixes / 30000 < 0.37, 'boosted 6 share ' + sixes / 30000);
 });

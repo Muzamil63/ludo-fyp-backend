@@ -110,7 +110,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     } else if (d.reason === 'removed') {
       show({ kind: 'error', title: 'You were removed from a tournament' });
     } else if (d.reason === 'started') {
-      show({ kind: 'trophy', title: 'Your tournament has started!', message: 'Round 1 has been drawn', actionLabel: 'View', onAction: open });
+      // The whole bracket is fixed now: open the map straight away
+      show({ kind: 'trophy', title: 'Your tournament has started!', message: 'Round 1 is drawn — see the full bracket', actionLabel: 'Bracket', onAction: () => navigate('Bracket', { tournamentId: d.tournament_id }) });
     }
   });
 

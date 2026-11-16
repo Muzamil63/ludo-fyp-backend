@@ -6,7 +6,9 @@ export const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
 export function navigate(name: keyof RootStackParamList, params?: object) {
   if (!navigationRef.isReady()) return;
-  // Game screens are always opened as a new screen (one screen per match)
-  if (name === 'Game') navigationRef.dispatch(StackActions.push(name, params));
-  else navigationRef.dispatch(StackActions.push(name, params));
+  // Already on this exact screen (e.g. a toast tapped twice): don't stack a copy of it
+  const current = navigationRef.getCurrentRoute();
+  if (current?.name === name && JSON.stringify(current.params ?? {}) === JSON.stringify(params ?? {})) return;
+  // Otherwise open it as a new screen (one screen per match / tournament)
+  navigationRef.dispatch(StackActions.push(name, params));
 }

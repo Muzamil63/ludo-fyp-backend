@@ -19,10 +19,10 @@ lib/
   api/       api_client.dart (http + JWT + errors) · endpoints.dart · socket_service.dart
   state/     auth_state.dart (ChangeNotifier via provider) · notifications.dart (snackbars + live alerts) · refresh_on_return.dart
   game/      board_layout.dart (15x15 geometry, pure) · rules.dart
-  utils/     format.dart · pick_date_time.dart
-  widgets/   common.dart · gradient_button.dart · form_widgets.dart · token_piece.dart · dice_view.dart · ludo_board.dart · player_panel.dart · logo.dart · tournament_card.dart · invite_friends_sheet.dart
+  utils/     format.dart · pick_date_time.dart · rule_text.dart (rule summaries) · bracket.dart (round names, drawn matches)
+  widgets/   common.dart · gradient_button.dart · form_widgets.dart · token_piece.dart · dice_view.dart · ludo_board.dart · player_panel.dart · logo.dart · tournament_card.dart · invite_friends_sheet.dart · rule_picker.dart (preset, or ⚙️ Custom → screens/game/custom_rules_screen.dart, returned with Navigator.pop) · bracket_tree.dart (full knockout tree)
   screens/   auth/ · home/ · game/ · rooms/ · tournaments/ · social/ · main_tabs.dart
-test/        board_layout_test.dart · widget_test.dart
+test/        board_layout_test.dart · widget_test.dart · bracket_test.dart
 test_live/   live_backend_test.dart (needs the backend running)
 setup.ps1    one-time: flutter create (android/) + manifest patch + pub get
 ```

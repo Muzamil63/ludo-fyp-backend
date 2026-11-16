@@ -6,17 +6,19 @@ const matchSetup = require('../game/matchSetup');
 const gameManager = require('../game/gameManager');
 const httpError = require('../utils/httpError');
 const { toId, oneOf } = require('../utils/validate');
+const { readRuleChoice } = require('../utils/ruleInput');
 
-// POST /api/matches/bot  { rule_set_id, total_players, game_mode, difficulty }
+// POST /api/matches/bot  { rule_set_id OR custom_rules, total_players, game_mode, difficulty }
 // The human sits in seat 1, bots fill the other seats.
 async function createBotMatch(req, res) {
   const body = req.body || {};
-  const ruleSetId = toId(body.rule_set_id ?? 1, 'rule_set_id');
+  const ruleChoice = readRuleChoice(body); // a preset, or the player's own rules
   const totalPlayers = oneOf(Number(body.total_players ?? 4), [2, 3, 4], 'total_players');
   const gameMode = oneOf(body.game_mode ?? 'ffa', ['ffa', '2v2'], 'game_mode');
   const difficulty = oneOf(body.difficulty ?? 'easy', ['easy', 'hard'], 'difficulty');
   if (gameMode === '2v2' && totalPlayers !== 4) throw httpError(400, '2v2 needs total_players = 4');
-  if (!(await ruleSetModel.findById(ruleSetId))) throw httpError(404, 'Rule set not found');
+  const ruleSetId = await ruleSetModel.resolveChoice(ruleChoice); // custom rules are saved as a new rule_sets row
+  if (!ruleSetId) throw httpError(404, 'Rule set not found');
 
   const matchId = await matchSetup.setupAndStart({
     match_type: 'bot',

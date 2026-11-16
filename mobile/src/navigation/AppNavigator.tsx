@@ -17,6 +17,7 @@ import RegisterScreen from '../screens/auth/RegisterScreen';
 import ServerSettingsScreen from '../screens/auth/ServerSettingsScreen';
 import HomeScreen from '../screens/home/HomeScreen';
 import BotSetupScreen from '../screens/game/BotSetupScreen';
+import CustomRulesScreen from '../screens/game/CustomRulesScreen';
 import MatchmakingScreen from '../screens/game/MatchmakingScreen';
 import GameScreen from '../screens/game/GameScreen';
 import CreateRoomScreen from '../screens/rooms/CreateRoomScreen';
@@ -25,6 +26,7 @@ import RoomLobbyScreen from '../screens/rooms/RoomLobbyScreen';
 import TournamentsScreen from '../screens/tournaments/TournamentsScreen';
 import TournamentDetailScreen from '../screens/tournaments/TournamentDetailScreen';
 import TournamentFormScreen from '../screens/tournaments/TournamentFormScreen';
+import BracketScreen from '../screens/tournaments/BracketScreen';
 import InvitesScreen from '../screens/social/InvitesScreen';
 import FriendsScreen from '../screens/social/FriendsScreen';
 import ProfileScreen from '../screens/social/ProfileScreen';
@@ -88,6 +90,7 @@ export default function AppNavigator() {
         <>
           <Stack.Screen name="Main" component={MainTabs} />
           <Stack.Screen name="BotSetup" component={BotSetupScreen} />
+          <Stack.Screen name="CustomRules" component={CustomRulesScreen} />
           <Stack.Screen name="Matchmaking" component={MatchmakingScreen} options={{ animation: 'fade' }} />
           <Stack.Screen name="Game" component={GameScreen} options={{ animation: 'fade_from_bottom', gestureEnabled: false }} />
           <Stack.Screen name="CreateRoom" component={CreateRoomScreen} />
@@ -95,6 +98,7 @@ export default function AppNavigator() {
           <Stack.Screen name="RoomLobby" component={RoomLobbyScreen} />
           <Stack.Screen name="TournamentDetail" component={TournamentDetailScreen} />
           <Stack.Screen name="TournamentForm" component={TournamentFormScreen} options={{ animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="Bracket" component={BracketScreen} />
           <Stack.Screen name="Invites" component={InvitesScreen} />
           <Stack.Screen name="Leaderboard" component={LeaderboardScreen} />
           <Stack.Screen name="ServerSettings" component={ServerSettingsScreen} />

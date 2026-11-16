@@ -1,5 +1,5 @@
-// One tournament: info, the right buttons for me (join / leave / invite / creator controls),
-// my next match, the players, the bracket and the champion. Refreshes live on "tournament:updated".
+// One tournament: info, the right buttons for me (join / leave / invite / creator controls), my next match,
+// a link to the full bracket map, the drawn matches, the players and the champion. Refreshes live on "tournament:updated".
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../api/endpoints.dart';
@@ -9,12 +9,15 @@ import '../../state/auth_state.dart';
 import '../../state/notifications.dart';
 import '../../state/refresh_on_return.dart';
 import '../../theme.dart';
+import '../../utils/bracket.dart';
 import '../../utils/format.dart';
 import '../../utils/pick_date_time.dart';
+import '../../utils/rule_text.dart';
 import '../../widgets/common.dart';
 import '../../widgets/gradient_button.dart';
 import '../../widgets/invite_friends_sheet.dart';
 import '../game/game_screen.dart';
+import 'bracket_screen.dart';
 import 'bracket_view.dart';
 import 'tournament_form_screen.dart';
 
@@ -81,11 +84,12 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> with Re
 
   void _push(Widget page) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
 
+  // Only for drawn matches, which always have an id and a time
   Future<void> _changeTime(BracketMatch m) async {
     final soon = DateTime.now().add(const Duration(minutes: 5));
-    final picked = await pickDateTime(context, m.scheduledAt.isAfter(soon) ? m.scheduledAt : soon);
+    final picked = await pickDateTime(context, m.scheduledAt!.isAfter(soon) ? m.scheduledAt! : soon);
     if (picked == null) return;
-    _act('time-${m.matchId}', () => TournamentApi.rescheduleMatch(widget.tournamentId, m.matchId, picked), 'Match time changed — players were told');
+    _act('time-${m.matchId}', () => TournamentApi.rescheduleMatch(widget.tournamentId, m.matchId!, picked), 'Match time changed — players were told');
   }
 
   Widget _info(String label, String value) => Container(
@@ -106,13 +110,15 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> with Re
     }
 
     final t = data.tournament;
+    final rounds = drawnRounds(data.rounds); // matches that exist (the full tree is on the Bracket screen)
+    final matchCount = data.rounds.fold(0, (n, r) => n + r.matches.length);
     final me = context.watch<AuthState>().player?.playerId;
     final isCreator = t.creatorId == me;
     final myEntry = data.participants.where((p) => p.playerId == me).firstOrNull;
     final full = data.participants.length >= t.maxParticipants;
-    final myMatch = data.rounds.expand((r) => r.matches).where((m) => m.isOpen && m.seats.any((s) => s.playerId == me)).firstOrNull;
+    final myMatch = rounds.expand((r) => r.matches).where((m) => m.isOpen && m.seats.any((s) => s.playerId == me)).firstOrNull;
     final startsIn = t.startTime.difference(DateTime.now());
-    final roundRunning = data.rounds.isNotEmpty && data.rounds.last.matches.any((m) => m.status != 'finished' && m.status != 'cancelled');
+    final roundRunning = rounds.isNotEmpty && rounds.last.matches.any((m) => m.status != 'finished' && m.status != 'cancelled');
     final activeCount = data.participants.where((p) => p.status == 'active').length;
     final nextRoundNote = t.status == 'in_progress' && roundRunning && activeCount > t.playersPerMatch
         ? 'Winners of this round meet here. It is drawn ${t.roundBreakMinutes} min after the last match ends.'
@@ -152,7 +158,7 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> with Re
                       Text('YOUR MATCH · ROUND ${myMatch.roundNo}', style: const TextStyle(color: AppColors.gold, fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 1)),
                       const SizedBox(height: 4),
                       Text(
-                        myMatch.status == 'in_progress' ? 'Live now!' : 'Starts in ${formatCountdown(myMatch.scheduledAt.difference(DateTime.now()))}',
+                        myMatch.status == 'in_progress' ? 'Live now!' : 'Starts in ${formatCountdown(myMatch.scheduledAt!.difference(DateTime.now()))}',
                         style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 24),
                       ),
                       const Text('Enter the lobby early: the match starts as soon as everyone is there.', style: AppText.small),
@@ -161,7 +167,7 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> with Re
                         title: myMatch.status == 'in_progress' ? 'Play Now' : 'Enter Lobby',
                         icon: Icons.play_arrow,
                         variant: ButtonVariant.gold,
-                        onPressed: () => _push(GameScreen(matchId: myMatch.matchId)),
+                        onPressed: () => _push(GameScreen(matchId: myMatch.matchId!)),
                       ),
                     ]),
                   ),
@@ -173,6 +179,8 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> with Re
                     if (t.description != null && t.description!.isNotEmpty) Padding(padding: const EdgeInsets.only(bottom: 12), child: Text(t.description!, style: AppText.body)),
                     _info('Format', t.playersPerMatch == 2 ? '1 vs 1 knockout' : '4-player matches, winner advances'),
                     _info('Rules', t.ruleSetName),
+                    if (data.ruleSet != null)
+                      Padding(padding: const EdgeInsets.only(top: 4, bottom: 6), child: Text(ruleSummary(data.ruleSet!.rules), style: AppText.small)),
                     _info('Players', '${data.participants.length} / ${t.maxParticipants}'),
                     _info(t.status == 'registration' ? 'Starts' : 'Started', formatDateTime(t.startTime)),
                     if (t.status == 'registration') _info('Countdown', startsIn.inSeconds > 0 ? formatCountdown(startsIn) : 'Starting…'),
@@ -284,11 +292,38 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> with Re
                 if (t.status == 'cancelled')
                   const Padding(padding: EdgeInsets.only(top: 14), child: Text('This tournament was cancelled.', textAlign: TextAlign.center, style: AppText.dim)),
 
-                // bracket
-                if (data.rounds.isNotEmpty) ...[
-                  const Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: SectionTitle('Bracket')),
+                // bracket map: the whole tree, round 1 → final
+                if (data.rounds.isNotEmpty)
+                  GlassCard(
+                    margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                    highlight: t.status == 'in_progress' ? AppColors.gold : null,
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                      const Text('🗺️ Bracket map', style: TextStyle(color: AppColors.gold, fontWeight: FontWeight.w900, fontSize: 16)),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4, bottom: 12),
+                        child: Text(
+                          data.preview
+                              ? 'Preview for ${t.maxParticipants} players · ${data.totalRounds} rounds · $matchCount matches'
+                              : '${data.participants.length} players · ${data.totalRounds} rounds · $matchCount matches',
+                          style: const TextStyle(color: AppColors.textDim, fontSize: 13),
+                        ),
+                      ),
+                      GradientButton(
+                        title: 'Open full bracket',
+                        icon: Icons.account_tree,
+                        variant: ButtonVariant.gold,
+                        size: ButtonSize.md,
+                        onPressed: () => _push(BracketScreen(tournamentId: id)),
+                      ),
+                    ]),
+                  ),
+
+                // drawn matches (with Play and the creator's match controls)
+                if (rounds.isNotEmpty) ...[
+                  const Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: SectionTitle('Matches')),
                   BracketView(
-                    rounds: data.rounds,
+                    rounds: rounds,
+                    totalRounds: data.totalRounds,
                     myPlayerId: me,
                     isCreator: isCreator && t.status == 'in_progress',
                     nextRoundNote: nextRoundNote,

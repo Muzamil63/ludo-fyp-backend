@@ -12,20 +12,25 @@ import OptionPicker from '../../components/OptionPicker';
 import { useAuth } from '../../context/AuthContext';
 import { useNotify } from '../../context/NotificationContext';
 import { DEFAULT_SERVER_URL } from '../../config';
+import { getServerUrl } from '../../api/client';
+import { pcServerUrl } from '../../api/findServer';
 import { colors } from '../../theme';
 import type { RootStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ServerSettings'>;
 
+// "This PC" = the computer Metro runs on (only known in a debug build).
+const pcUrl = pcServerUrl();
 const PRESETS = [
-  { label: 'Emulator', value: DEFAULT_SERVER_URL, hint: '10.0.2.2' },
+  ...(pcUrl && pcUrl !== 'http://localhost:3000' && pcUrl !== DEFAULT_SERVER_URL ? [{ label: 'This PC', value: pcUrl, hint: 'Wi-Fi' }] : []),
   { label: 'USB phone', value: 'http://localhost:3000', hint: 'adb reverse' },
+  { label: 'Emulator', value: DEFAULT_SERVER_URL, hint: '10.0.2.2' },
 ];
 
 export default function ServerSettingsScreen({ navigation }: Props) {
-  const { serverUrl, changeServerUrl, player, logout } = useAuth();
+  const { changeServerUrl, player, logout } = useAuth();
   const { showToast } = useNotify();
-  const [url, setUrl] = useState(serverUrl);
+  const [url, setUrl] = useState(getServerUrl()); // the address the app uses right now
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
   const [testing, setTesting] = useState(false);
 
@@ -66,6 +71,7 @@ export default function ServerSettingsScreen({ navigation }: Props) {
         </GlassCard>
         <GlassCard style={styles.help}>
           <Text style={styles.helpTitle}>Which address?</Text>
+          <Text style={styles.helpText}>The app finds the server by itself when it starts. Set an address here only to force one.</Text>
           <Text style={styles.helpText}>• Android emulator: http://10.0.2.2:3000</Text>
           <Text style={styles.helpText}>• Phone on the same Wi-Fi: http://YOUR-PC-IP:3000 (run ipconfig on the PC)</Text>
           <Text style={styles.helpText}>• Phone on USB: run "adb reverse tcp:3000 tcp:3000", then use http://localhost:3000</Text>

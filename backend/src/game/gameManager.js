@@ -97,42 +97,63 @@ async function startTurn(matchId) {
   const seat = (await matchModel.listSeats(matchId)).find((s) => s.seat_no === seatNo);
   const rules = await ruleSetModel.findById(match.rule_set_id);
 
-  if (seat.bot_id) {
-    setMatchTimer(matchId, C.BOT_DELAY_MS, null, () => autoPlay(matchId, seatNo));
-    emitToMatch(matchId, 'game:turn', { seat_no: seatNo, deadline: null });
-  } else {
-    const ms = rules.turn_seconds * 1000;
-    const deadline = Date.now() + ms;
-    setMatchTimer(matchId, ms, deadline, () => autoPlay(matchId, seatNo));
-    emitToMatch(matchId, 'game:turn', { seat_no: seatNo, deadline });
-  }
+  const ms = seat.bot_id ? C.BOT_DELAY_MS : rules.turn_seconds * 1000;
+  const deadline = seat.bot_id ? null : Date.now() + ms;
+  setMatchTimer(matchId, ms, deadline, () => autoPlay(matchId, seatNo));
+  // The player already rolled (a retried turn, or after a restart): resend the full state so the app
+  // keeps the dice and the movable tokens. "game:turn" would tell the app to roll again.
+  if (match.dice_value !== null) emitToMatch(matchId, 'match:state', await getState(matchId));
+  else emitToMatch(matchId, 'game:turn', { seat_no: seatNo, deadline });
 }
 
-// Server rolls the dice. If no token can move, the turn passes straight away.
-async function rollDice(matchId, seatNo) {
+// After a server restart the in-memory turn timers are gone: start them again for every running match,
+// so no-show tournament matches still finish (players who come back also re-arm through ensureTimer).
+async function resumeRunningMatches() {
+  for (const matchId of await matchModel.listRunningIds()) await ensureTimer(matchId);
+}
+
+// Server rolls the dice. If no token can move, the turn passes, unless the seat still has a try left
+// ("3 tries at home": all its tokens are in base). isAuto = called by autoPlay.
+async function rollDice(matchId, seatNo, isAuto = false) {
   const result = await withTransaction(async (conn) => {
     const { match, rules, seats, tokens } = await loadLocked(conn, matchId);
     checkTurn(match, seatNo);
     if (match.dice_value !== null) throw httpError(409, 'Already rolled, move a token');
 
-    const dice = crypto.randomInt(1, 7); // 1..6
-    const moves = engine.getValidMoves(seatTokensOf(tokens, seatNo), dice, rules);
-    if (moves.length === 0) {
-      const next = engine.getNextSeat(seatNo, activeSeatNos(seats, tokens, rules));
-      await matchModel.updateTurn(matchId, next, null, conn);
-    } else {
+    const seat = seats.find((s) => s.seat_no === seatNo);
+    const dice = engine.rollDiceValue(seat.rolls_since_six, rules, crypto.randomInt); // 1..6
+    await matchModel.setRollsSinceSix(seat.match_player_id, dice === 6 ? 0 : Math.min(seat.rolls_since_six + 1, 100), conn);
+    const seatTokens = seatTokensOf(tokens, seatNo);
+    const moves = engine.getValidMoves(seatTokens, dice, rules);
+    let triesLeft = 0;
+    if (moves.length > 0) {
       await matchModel.updateTurn(matchId, seatNo, dice, conn); // remember the dice until the move
+    } else {
+      triesLeft = engine.triesLeftAfterMiss(seatTokens, match.tries_used, rules);
+      if (triesLeft > 0) {
+        await matchModel.addMissedTry(matchId, conn); // same seat rolls again
+      } else {
+        const next = engine.getNextSeat(seatNo, activeSeatNos(seats, tokens, rules));
+        await matchModel.updateTurn(matchId, next, null, conn);
+      }
     }
-    return { dice_value: dice, moves };
+    return { dice_value: dice, moves, tries_left: triesLeft };
   });
 
   const validTokenIds = result.moves.map((m) => m.token_id);
-  emitToMatch(matchId, 'game:rolled', { seat_no: seatNo, dice_value: result.dice_value, valid_token_ids: validTokenIds });
+  emitToMatch(matchId, 'game:rolled', {
+    seat_no: seatNo,
+    dice_value: result.dice_value,
+    valid_token_ids: validTokenIds,
+    tries_left: result.tries_left,
+  });
 
-  if (result.moves.length === 0) {
+  // No move: after a short pause the next turn starts (the same seat again when it has a try left).
+  // autoPlay uses its remaining tries itself, so it needs no timer for them.
+  if (result.moves.length === 0 && !(isAuto && result.tries_left > 0)) {
     setMatchTimer(matchId, C.NO_MOVE_DELAY_MS, null, () => startTurn(matchId));
   }
-  return { dice_value: result.dice_value, valid_token_ids: validTokenIds, moves: result.moves };
+  return { dice_value: result.dice_value, valid_token_ids: validTokenIds, moves: result.moves, tries_left: result.tries_left };
 }
 
 // Moves one token with the rolled dice: capture, save the move, check for a winner, pick the next turn.
@@ -264,7 +285,12 @@ async function autoPlay(matchId, seatNo) {
 
   let validMoves;
   if (match.dice_value === null) {
-    const rolled = await rollDice(matchId, seatNo);
+    let rolled = await rollDice(matchId, seatNo, true);
+    // All tokens still in base with tries left: use them now, a moment apart (no new timer per try)
+    while (rolled.moves.length === 0 && rolled.tries_left > 0) {
+      await sleep(C.NO_MOVE_DELAY_MS);
+      rolled = await rollDice(matchId, seatNo, true);
+    }
     if (rolled.moves.length === 0) return; // turn already passed
     validMoves = rolled.moves;
     if (isBot) await sleep(C.BOT_DELAY_MS); // let players see the bot's dice
@@ -287,4 +313,4 @@ async function ensureTimer(matchId) {
   if (match && match.status === 'in_progress') await startTurn(matchId);
 }
 
-module.exports = { getState, startMatch, startTurn, rollDice, moveToken, ensureTimer, clearTimer };
+module.exports = { getState, startMatch, startTurn, rollDice, moveToken, ensureTimer, clearTimer, resumeRunningMatches };

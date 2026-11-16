@@ -147,6 +147,17 @@ async function eliminateRoundLosers(tournamentId, roundNo, conn = pool) {
   );
 }
 
+// The winner of each match of a round, in match order (they meet their neighbours in the next round).
+async function listRoundWinners(tournamentId, roundNo, conn = pool) {
+  const [rows] = await conn.query(
+    `SELECT mp.player_id FROM tournament_matches tm JOIN match_players mp ON mp.match_id = tm.match_id
+     WHERE tm.tournament_id = ? AND tm.round_no = ? AND mp.finish_position = 1
+     ORDER BY tm.match_no`,
+    [tournamentId, roundNo]
+  );
+  return rows.map((r) => r.player_id);
+}
+
 // Champion: participant status + +1 tournament win on the profile.
 async function setChampion(tournamentId, playerId, conn = pool) {
   await conn.query(
@@ -207,7 +218,8 @@ async function setMatchSchedule(matchId, scheduledAt, conn = pool) {
 async function listOpenMatchIds(tournamentId, conn = pool) {
   const [rows] = await conn.query(
     `SELECT tm.match_id FROM tournament_matches tm JOIN matches m ON m.match_id = tm.match_id
-     WHERE tm.tournament_id = ? AND m.status IN ('waiting', 'in_progress')`,
+     WHERE tm.tournament_id = ? AND m.status IN ('waiting', 'in_progress')
+     FOR UPDATE`, // waits for a move that is finishing a match right now, so a finished match is never cancelled
     [tournamentId]
   );
   return rows.map((r) => r.match_id);
@@ -239,6 +251,7 @@ module.exports = {
   listActivePlayerIds,
   listMemberIds,
   eliminateRoundLosers,
+  listRoundWinners,
   setChampion,
   findMatchSlot,
   listMatches,

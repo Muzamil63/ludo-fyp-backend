@@ -4,7 +4,7 @@ import React, { useCallback, useState } from 'react';
 import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Edit3, LogIn, LogOut, Play, UserPlus, XCircle, Zap, X } from 'lucide-react-native';
+import { Edit3, LogIn, LogOut, Network, Play, UserPlus, XCircle, Zap, X } from 'lucide-react-native';
 import ScreenBackground from '../../components/ScreenBackground';
 import AppHeader from '../../components/AppHeader';
 import GlassCard from '../../components/GlassCard';
@@ -22,9 +22,11 @@ import { useSocketEvent } from '../../hooks/useSocketEvent';
 import { useNow } from '../../hooks/useNow';
 import { pickDateTime } from '../../utils/pickDateTime';
 import { formatCountdown, formatDateTime } from '../../utils/format';
+import { ruleSummary } from '../../utils/ruleText';
+import { drawnRounds, type DrawnMatch } from '../../utils/bracket';
 import { colors } from '../../theme';
 import type { RootStackParamList } from '../../navigation/types';
-import type { BracketMatch, TournamentDetail } from '../../types';
+import type { TournamentDetail } from '../../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TournamentDetail'>;
 
@@ -86,7 +88,9 @@ export default function TournamentDetailScreen({ navigation, route }: Props) {
     );
   }
 
-  const { tournament: t, participants, rounds, champion } = data;
+  const { tournament: t, participants, champion, rule_set, preview, total_rounds } = data;
+  const rounds = drawnRounds(data.rounds); // matches that exist (the full tree is on the Bracket screen)
+  const matchCount = data.rounds.reduce((n, r) => n + r.matches.length, 0);
   const me = player?.player_id;
   const isCreator = t.creator_id === me;
   const myEntry = participants.find((p) => p.player_id === me);
@@ -102,7 +106,7 @@ export default function TournamentDetailScreen({ navigation, route }: Props) {
   const confirm = (title: string, message: string, onYes: () => void) =>
     Alert.alert(title, message, [{ text: 'No', style: 'cancel' }, { text: 'Yes', style: 'destructive', onPress: onYes }]);
 
-  async function changeTime(m: BracketMatch) {
+  async function changeTime(m: DrawnMatch) {
     const initial = new Date(Math.max(new Date(m.scheduled_at).getTime(), Date.now() + 5 * 60000));
     const picked = await pickDateTime(initial);
     if (!picked) return;
@@ -143,6 +147,7 @@ export default function TournamentDetailScreen({ navigation, route }: Props) {
           {!!t.description && <Text style={styles.description}>{t.description}</Text>}
           <InfoRow label="Format" value={t.players_per_match === 2 ? '1 vs 1 knockout' : '4-player matches, winner advances'} />
           <InfoRow label="Rules" value={t.rule_set_name} />
+          {!!rule_set && <Text style={styles.rulesLine}>{ruleSummary(rule_set)}</Text>}
           <InfoRow label="Players" value={`${participants.length} / ${t.max_participants}`} />
           <InfoRow label={t.status === 'registration' ? 'Starts' : 'Started'} value={formatDateTime(t.start_time)} />
           {t.status === 'registration' && <InfoRow label="Countdown" value={startsIn > 0 ? formatCountdown(startsIn) : 'Starting…'} />}
@@ -187,13 +192,27 @@ export default function TournamentDetailScreen({ navigation, route }: Props) {
         )}
         {t.status === 'cancelled' && <Text style={styles.info}>This tournament was cancelled.</Text>}
 
-        {/* bracket */}
+        {/* bracket map: the whole tree, round 1 → final */}
+        {data.rounds.length > 0 && (
+          <GlassCard style={styles.mapCard} highlight={t.status === 'in_progress' ? colors.gold : undefined}>
+            <Text style={styles.mapTitle}>🗺️ Bracket map</Text>
+            <Text style={styles.mapHint}>
+              {preview
+                ? `Preview for ${t.max_participants} players · ${total_rounds} rounds · ${matchCount} matches`
+                : `${participants.length} players · ${total_rounds} rounds · ${matchCount} matches`}
+            </Text>
+            <GameButton title="Open full bracket" icon={Network} variant="gold" size="md" onPress={() => navigation.navigate('Bracket', { tournamentId: t.tournament_id })} />
+          </GlassCard>
+        )}
+
+        {/* drawn matches (with Play and the creator's match controls) */}
         {rounds.length > 0 && (
           <>
-            <Text style={styles.section}>Bracket</Text>
+            <Text style={styles.section}>Matches</Text>
             <View style={styles.bracket}>
               <BracketView
                 rounds={rounds}
+                totalRounds={total_rounds}
                 myPlayerId={me}
                 isCreator={isCreator && t.status === 'in_progress'}
                 nextRoundNote={nextRoundNote}
@@ -241,6 +260,10 @@ export default function TournamentDetailScreen({ navigation, route }: Props) {
 }
 
 const styles = StyleSheet.create({
+  rulesLine: { color: colors.textMuted, fontSize: 12, marginTop: -2, marginBottom: 6 },
+  mapCard: { marginTop: 16 },
+  mapTitle: { color: colors.gold, fontWeight: '900', fontSize: 16 },
+  mapHint: { color: colors.textDim, fontSize: 13, marginTop: 4, marginBottom: 12 },
   content: { paddingVertical: 12, paddingBottom: 40 },
   champion: { alignItems: 'center', marginHorizontal: 16, marginBottom: 14 },
   championEmoji: { fontSize: 50 },

@@ -2,7 +2,7 @@
 import { api } from './client';
 import type {
   Player, RuleSet, MatchState, Friend, RoomInvitation, Tournament, TournamentDetail,
-  TournamentInvitation, UpcomingMatch, HistoryMatch, Seat,
+  TournamentInvitation, UpcomingMatch, HistoryMatch, Seat, RuleChoice, CustomRules,
 } from '../types';
 
 type AuthResult = { token: string; player: Player };
@@ -36,13 +36,13 @@ export const friendApi = {
 
 export const matchApi = {
   ruleSets: () => api.get<RuleSet[]>('/rule-sets'),
-  createBot: (body: { rule_set_id: number; total_players: number; game_mode: string; difficulty: string }) =>
+  createBot: (body: RuleChoice & { total_players: number; game_mode: string; difficulty: string }) =>
     api.post<{ match_id: number }>('/matches/bot', body),
   state: (matchId: number) => api.get<MatchState>(`/matches/${matchId}`),
 };
 
 export const roomApi = {
-  create: (body: { rule_set_id: number; max_players: number; game_mode: string }) =>
+  create: (body: RuleChoice & { max_players: number; game_mode: string }) =>
     api.post<{ match_id: number; room_code: string }>('/rooms', body),
   byCode: (code: string) => api.get<{ match_id: number; room_code: string; host_id: number; status: string; seats: Seat[] }>(`/rooms/code/${code}`),
   join: (room_code: string) => api.post<{ match_id: number; room_code: string; seat_no: number }>('/rooms/join', { room_code }),
@@ -57,7 +57,8 @@ export const roomApi = {
 export interface TournamentFields {
   name: string;
   description?: string | null;
-  rule_set_id: number;
+  rule_set_id?: number;       // a preset ...
+  custom_rules?: CustomRules; // ... or the creator's own rules
   max_participants: number;
   players_per_match: number;
   start_time: string;

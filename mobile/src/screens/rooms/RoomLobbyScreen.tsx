@@ -18,6 +18,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useNotify } from '../../context/NotificationContext';
 import { useSocketEvent } from '../../hooks/useSocketEvent';
 import { colors, ludo, radius } from '../../theme';
+import { ruleSummary } from '../../utils/ruleText';
 import type { RootStackParamList } from '../../navigation/types';
 import type { MatchState, Seat } from '../../types';
 
@@ -105,6 +106,7 @@ export default function RoomLobbyScreen({ navigation, route }: Props) {
         <GlassCard style={styles.codeCard} highlight={colors.gold}>
           <Text style={styles.codeLabel}>ROOM CODE</Text>
           <Text style={styles.code}>{roomCode}</Text>
+          <Text style={styles.rulesLine}>{ruleSummary(state.match.rule_set)}</Text>
           <GameButton
             title="Share code"
             icon={Share2}
@@ -173,6 +175,7 @@ export default function RoomLobbyScreen({ navigation, route }: Props) {
 }
 
 const styles = StyleSheet.create({
+  rulesLine: { color: colors.textDim, fontSize: 12, textAlign: 'center', marginBottom: 10 },
   content: { padding: 20, paddingBottom: 40 },
   codeCard: { alignItems: 'center' },
   codeLabel: { color: colors.textDim, fontWeight: '800', letterSpacing: 3, fontSize: 12 },

@@ -3,6 +3,16 @@
 // A token is { token_id, seat_no, color, team_no, position }. "rules" is a row from rule_sets.
 const C = require('./constants');
 
+// The dice, with bad-luck protection. Normally a fair dice (each number 1 in 6). But after
+// rules.six_boost_after rolls in a row without a 6, a 6 is 1 in 3 until the player rolls one, so nobody waits
+// very long for a 6 (same rule for every player; 0 = always fair). randomInt is crypto.randomInt, passed in
+// so this function stays pure and testable.
+function rollDiceValue(rollsSinceSix, rules, randomInt) {
+  const boosted = rules.six_boost_after > 0 && rollsSinceSix >= rules.six_boost_after;
+  if (!boosted) return randomInt(1, 7); // 1..6
+  return randomInt(0, 3) === 0 ? 6 : randomInt(1, 6); // 6 = 1 in 3, the other 2 in 3 are 1..5
+}
+
 // Dice values that let a token leave the base.
 function unlockValues(rules) {
   return rules.six_to_unlock ? [6] : [1, 6];
@@ -20,6 +30,15 @@ function getValidMoves(seatTokens, dice, rules) {
     }
   }
   return moves;
+}
+
+// "3 tries at home" (a traditional rule): while none of the seat's tokens is on the board (all in base,
+// or already home), a roll that cannot move gives another try, up to rules.tries_when_all_home rolls a turn.
+// triesUsed = missed rolls already made this turn. Returns how many tries are left after this miss.
+function triesLeftAfterMiss(seatTokens, triesUsed, rules) {
+  const noneOnBoard = seatTokens.every((t) => t.position === C.BASE_POS || t.position === C.HOME_POS);
+  if (!noneOnBoard) return 0;
+  return Math.max(0, (rules.tries_when_all_home || 1) - (triesUsed + 1));
 }
 
 // Turns a colour-relative position into a shared track cell (0-51). Null for base / home column / home.
@@ -89,21 +108,11 @@ function rankSeats(seats, tokens, winnerSeatNos, gameMode) {
   ];
 }
 
-// Splits the players of a tournament round into matches (players already shuffled).
-// 1v1 (perMatch 2): pairs; with an odd number the last player joins a pair → one 3-player match, so no byes.
-// 4-player (perMatch 4): as few matches as possible, sizes as equal as possible (5 → 3 + 2).
-function makeTournamentGroups(playerIds, perMatch) {
-  const n = playerIds.length;
-  const groupCount = Math.max(1, perMatch === 2 ? Math.floor(n / 2) : Math.ceil(n / perMatch));
-  const groups = Array.from({ length: groupCount }, () => []);
-  playerIds.forEach((id, i) => groups[i % groupCount].push(id));
-  return groups;
-}
-
 module.exports = {
-  makeTournamentGroups,
+  rollDiceValue,
   unlockValues,
   getValidMoves,
+  triesLeftAfterMiss,
   toGlobalCell,
   isSafeCell,
   findCapture,

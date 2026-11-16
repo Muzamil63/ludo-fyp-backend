@@ -50,14 +50,17 @@ CREATE TABLE friendships (
 -- ---------------------------------------------------------------------
 CREATE TABLE rule_sets (
   rule_set_id            INT AUTO_INCREMENT PRIMARY KEY,
-  name                   VARCHAR(50) NOT NULL UNIQUE,
+  name                   VARCHAR(50) NOT NULL,            -- presets: Classic / Quick / Demo; custom rows are all "Custom"
   six_to_unlock          TINYINT(1) NOT NULL DEFAULT 1,   -- 0 = a 1 or a 6 unlocks
   extra_turn_on_six      TINYINT(1) NOT NULL DEFAULT 1,
   extra_turn_on_capture  TINYINT(1) NOT NULL DEFAULT 1,
   extra_turn_on_home     TINYINT(1) NOT NULL DEFAULT 1,
   capture_enabled        TINYINT(1) NOT NULL DEFAULT 1,
   tokens_to_win          TINYINT NOT NULL DEFAULT 4,      -- tokens that must reach home to finish
-  turn_seconds           TINYINT NOT NULL DEFAULT 30
+  turn_seconds           TINYINT NOT NULL DEFAULT 30,
+  tries_when_all_home    TINYINT NOT NULL DEFAULT 3,      -- rolls per turn while all your tokens are in base (1 = only one)
+  six_boost_after        TINYINT NOT NULL DEFAULT 6,      -- after this many rolls in a row without a 6, a 6 is 1 in 3 (0 = always fair)
+  is_custom              TINYINT(1) NOT NULL DEFAULT 0    -- 1 = made by a player for one game / tournament (hidden from the preset list)
 ) ENGINE=InnoDB;
 
 CREATE TABLE bots (
@@ -78,6 +81,7 @@ CREATE TABLE matches (
   status        ENUM('waiting','in_progress','finished','cancelled') NOT NULL DEFAULT 'waiting',
   current_seat  TINYINT NULL,     -- seat_no whose turn it is
   dice_value    TINYINT NULL,     -- rolled but not used yet; NULL = current seat must roll
+  tries_used    TINYINT NOT NULL DEFAULT 0,  -- missed rolls this turn ("3 tries at home", see rule_sets)
   created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   started_at    DATETIME NULL,
   ended_at      DATETIME NULL,
@@ -115,7 +119,7 @@ CREATE TABLE tournaments (
   rule_set_id          INT NOT NULL,                        -- RULE_SET governs TOURNAMENT (its matches)
   name                 VARCHAR(100) NOT NULL,
   description          VARCHAR(255) NULL,
-  max_participants     TINYINT NOT NULL DEFAULT 8,          -- 2, 4, 8 or 16
+  max_participants     TINYINT NOT NULL DEFAULT 8,          -- 2, 4, 8, 16, 32 or 64
   players_per_match    TINYINT NOT NULL DEFAULT 4,          -- 2 = 1v1 knockout, 4 = 4-player matches
   start_time           DATETIME NOT NULL,                   -- registration closes, round 1 is drawn
   round_break_minutes  TINYINT NOT NULL DEFAULT 2,          -- wait before the next round's matches start
@@ -182,6 +186,7 @@ CREATE TABLE match_players (
   seat_no          TINYINT NOT NULL,                        -- 1..4 = colour + turn order
   color            ENUM('red','green','yellow','blue') NOT NULL,
   finish_position  TINYINT NULL,                            -- 1 = winner (set when match ends)
+  rolls_since_six  TINYINT NOT NULL DEFAULT 0,              -- for the dice's bad-luck protection (rule_sets.six_boost_after)
   joined_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uq_seat (match_id, seat_no),
   UNIQUE KEY uq_player_once (match_id, player_id),

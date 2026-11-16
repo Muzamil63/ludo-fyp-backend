@@ -5,6 +5,7 @@ import type { Socket } from 'socket.io-client';
 import { authApi } from '../api/endpoints';
 import { setAuthToken, setServerUrl as setApiServerUrl, getServerUrl } from '../api/client';
 import { connectSocket, disconnectSocket } from '../api/socket';
+import { findServer, pcServerUrl } from '../api/findServer';
 import { storage } from '../storage';
 import { DEFAULT_SERVER_URL } from '../config';
 import type { Player } from '../types';
@@ -38,6 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAuthToken(token);
     await storage.setToken(token);
     setPlayer(me);
+    setServerUrlState(getServerUrl()); // the API may have found the server at another address
     const s = connectSocket(getServerUrl(), token);
     s.on('connect', () => setSocketConnected(true));
     s.on('disconnect', () => setSocketConnected(false));
@@ -48,7 +50,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     (async () => {
       const savedUrl = await storage.getServerUrl();
-      const url = savedUrl || DEFAULT_SERVER_URL;
+      // Use the first address where the backend answers (the saved one wins). If none answers yet,
+      // keep the best guess: requests look again by themselves later (api/client.ts).
+      const url = (await findServer(savedUrl)) || savedUrl || pcServerUrl() || DEFAULT_SERVER_URL;
       setApiServerUrl(url);
       setServerUrlState(url);
 

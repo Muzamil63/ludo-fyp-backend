@@ -1,4 +1,5 @@
-// The knockout bracket: one column per round, one card per match (players, winner, time, status).
+// The drawn matches of a tournament: one column per round, one card per match (players, winner, time, status).
+// (The whole tree, with the rounds still to come, is the BracketTree on the Bracket screen.)
 // The creator gets "Start now" / "Change time" on waiting matches; players get "Play" on their match.
 import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -9,29 +10,28 @@ import GameButton from '../../components/GameButton';
 import { useNow } from '../../hooks/useNow';
 import { formatCountdown, formatDateTime, formatTime } from '../../utils/format';
 import { colors, ludo } from '../../theme';
-import type { BracketMatch } from '../../types';
+import { roundName, type DrawnMatch, type Round } from '../../utils/bracket';
 
 interface Props {
-  rounds: { round_no: number; matches: BracketMatch[] }[];
+  rounds: Round<DrawnMatch>[];
+  totalRounds: number;
   myPlayerId?: number;
   isCreator: boolean;
   nextRoundNote?: string;
   busy: string | null;
   onPlay: (matchId: number) => void;
   onStartNow: (matchId: number) => void;
-  onChangeTime: (match: BracketMatch) => void;
+  onChangeTime: (match: DrawnMatch) => void;
 }
 
-export default function BracketView({ rounds, myPlayerId, isCreator, nextRoundNote, busy, onPlay, onStartNow, onChangeTime }: Props) {
+export default function BracketView({ rounds, totalRounds, myPlayerId, isCreator, nextRoundNote, busy, onPlay, onStartNow, onChangeTime }: Props) {
   const now = useNow();
-  const lastRound = rounds[rounds.length - 1];
-  const roundName = (no: number, matchCount: number) => (no === lastRound?.round_no && matchCount === 1 && !nextRoundNote ? 'Final' : `Round ${no}`);
 
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.scroll}>
       {rounds.map((round) => (
         <View key={round.round_no} style={styles.column}>
-          <Text style={styles.roundTitle}>{roundName(round.round_no, round.matches.length)}</Text>
+          <Text style={styles.roundTitle}>{roundName(round.round_no, totalRounds)}</Text>
           {round.matches.map((m) => {
             const mine = m.seats.some((s) => s.player_id === myPlayerId);
             const open = m.status === 'waiting' || m.status === 'in_progress';

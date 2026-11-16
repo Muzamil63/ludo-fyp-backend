@@ -6,6 +6,7 @@ import '../../state/notifications.dart';
 import '../../widgets/common.dart';
 import '../../widgets/form_widgets.dart';
 import '../../widgets/gradient_button.dart';
+import '../../widgets/rule_picker.dart';
 import 'room_lobby_screen.dart';
 
 class CreateRoomScreen extends StatefulWidget {
@@ -15,22 +16,15 @@ class CreateRoomScreen extends StatefulWidget {
 }
 
 class _CreateRoomScreenState extends State<CreateRoomScreen> {
-  List<RuleSet> _ruleSets = [];
-  int _ruleSetId = 1;
+  RuleChoice _rules = const RuleChoice.preset(1); // Classic
   int _players = 4;
   String _mode = 'ffa';
   bool _loading = false;
 
-  @override
-  void initState() {
-    super.initState();
-    MatchApi.ruleSets().then((r) => setState(() => _ruleSets = r)).catchError((_) {});
-  }
-
   Future<void> _create() async {
     setState(() => _loading = true);
     try {
-      final room = await RoomApi.create(ruleSetId: _ruleSetId, maxPlayers: _players, gameMode: _mode);
+      final room = await RoomApi.create(rules: _rules, maxPlayers: _players, gameMode: _mode);
       if (!mounted) return;
       Navigator.of(context).pushReplacement(MaterialPageRoute(
         builder: (_) => RoomLobbyScreen(matchId: room['match_id'] as int, roomCode: room['room_code'] as String),
@@ -66,13 +60,7 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                     options: [const Option('Free for all', 'ffa'), Option('2 vs 2', '2v2', disabled: _players != 4, hint: _players != 4 ? 'needs 4' : null)],
                     onChanged: (m) => setState(() => _mode = m),
                   ),
-                  if (_ruleSets.isNotEmpty)
-                    OptionPicker<int>(
-                      label: 'Rules',
-                      value: _ruleSetId,
-                      options: [for (final r in _ruleSets) Option(r.name, r.ruleSetId, hint: r.hint)],
-                      onChanged: (id) => setState(() => _ruleSetId = id),
-                    ),
+                  RulePicker(value: _rules, onChanged: (r) => setState(() => _rules = r)),
                   GradientButton(title: 'Create Room', icon: Icons.meeting_room, variant: ButtonVariant.gold, loading: _loading, onPressed: _create),
                 ]),
               ),

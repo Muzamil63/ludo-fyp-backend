@@ -388,6 +388,34 @@
           ]
         },
         {
+          "name": "Create bot match (custom rules)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/matches/bot",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"total_players\": 2,\n  \"difficulty\": \"easy\",\n  \"custom_rules\": {\n    \"six_to_unlock\": 0,\n    \"tokens_to_win\": 2,\n    \"turn_seconds\": 20,\n    \"capture_enabled\": 1,\n    \"extra_turn_on_six\": 1,\n    \"extra_turn_on_capture\": 1,\n    \"extra_turn_on_home\": 1,\n    \"tries_when_all_home\": 3,\n    \"six_boost_after\": 6\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('match_id', pm.response.json().data.match_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Match state",
           "request": {
             "method": "GET",

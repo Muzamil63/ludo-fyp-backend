@@ -19,12 +19,18 @@ React Native (Android) app for the Ludo FYP. It needs the backend from [../backe
 
 ## Connecting to the backend
 
-Open the app → ⚙️ (top right of the start screen, or Profile → Server settings), pick an address, press **Test**, then **Save**:
+The app **finds the backend by itself** when it starts (`src/api/findServer.ts`). It tries the saved address, the PC that Metro runs on, `http://localhost:3000` and the emulator address. If a request can't connect later, it looks again.
+
+**Phone on USB:** after plugging in, tap **Allow** on the "Allow USB debugging?" prompt, then run `npm run phone`. This forwards the phone's ports 3000 (backend) and 8088 (Metro) to the PC. Run it again every time the cable is re-plugged.
+
+Metro runs on port **8088**, not 8081, because Laragon's Apache uses 8081 on this PC.
+
+To force an address: open the app → ⚙️ (top right of the start screen, or Profile → Server settings), pick an address, press **Test**, then **Save**:
 
 | Where the app runs | Server address |
 |--------------------|----------------|
 | Android emulator | `http://10.0.2.2:3000` (default) |
-| Phone on USB | run `adb reverse tcp:3000 tcp:3000`, then use `http://localhost:3000` |
+| Phone on USB | `npm run phone`, then `http://localhost:3000` |
 | Phone on the same Wi-Fi | `http://<PC IP from ipconfig>:3000`, and allow Node in Windows Firewall |
 
 If the backend uses another port (e.g. `PORT=3100` in `backend/.env`), change `3000` to match.

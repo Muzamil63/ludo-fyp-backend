@@ -17,22 +17,39 @@ module.exports = function registerGameHandlers(io, socket) {
     return { matchId, seat };
   }
 
+  // A tournament match that has not started: tell everyone in its lobby who is here
+  // (this also starts the match early when all its players are present).
+  async function updateLobby(matchId) {
+    const match = await matchModel.findById(matchId);
+    if (match && match.match_type === 'tournament' && match.status === 'waiting') {
+      await tournamentManager.onLobbyJoin(matchId);
+    }
+  }
+
   on(socket, 'match:join', async ({ match_id }) => {
     const { matchId } = await mySeat(match_id);
     socket.join(`match:${matchId}`);
     await gameManager.ensureTimer(matchId);
-    const state = await gameManager.getState(matchId);
-    // Tournament lobby: tell everyone who is here; starts the match early if all players are present.
-    if (state.match.match_type === 'tournament' && state.match.status === 'waiting') {
-      await tournamentManager.onLobbyJoin(matchId);
-    }
-    return state;
+    await updateLobby(matchId);
+    // Read the state AFTER the lobby check: if this join started the match, the app must get the running match
+    return gameManager.getState(matchId);
   });
 
   // Leaving the board screen: stop receiving this match's events (the match itself goes on).
   on(socket, 'match:leave', async ({ match_id }) => {
-    socket.leave(`match:${toId(match_id, 'match_id')}`);
+    const matchId = toId(match_id, 'match_id');
+    socket.leave(`match:${matchId}`);
+    await updateLobby(matchId);
     return { left: true };
+  });
+
+  // App closed or connection lost: the lobbies this socket was in must stop showing the player as "here".
+  let lobbyMatchIds = [];
+  socket.on('disconnecting', () => {
+    lobbyMatchIds = [...socket.rooms].filter((r) => r.startsWith('match:')).map((r) => Number(r.slice(6)));
+  });
+  socket.on('disconnect', () => {
+    for (const matchId of lobbyMatchIds) updateLobby(matchId).catch(() => {});
   });
 
   on(socket, 'game:roll', async ({ match_id }) => {

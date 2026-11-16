@@ -5,6 +5,7 @@ import '../api/endpoints.dart';
 import '../api/socket_service.dart';
 import '../screens/game/game_screen.dart';
 import '../screens/social/invites_screen.dart';
+import '../screens/tournaments/bracket_screen.dart';
 import '../screens/tournaments/tournament_detail_screen.dart';
 import '../theme.dart';
 import '../utils/format.dart';
@@ -106,7 +107,9 @@ class Notifications {
         case 'removed':
           toast('You were removed from a tournament', kind: ToastKind.error);
         case 'started':
-          toast('Your tournament has started!', message: 'Round 1 has been drawn', kind: ToastKind.trophy, actionLabel: 'View', onAction: view);
+          // The whole bracket is fixed now: open the map straight away
+          toast('Your tournament has started!', message: 'Round 1 is drawn — see the full bracket', kind: ToastKind.trophy,
+              actionLabel: 'Bracket', onAction: () => open(BracketScreen(tournamentId: id)));
       }
     });
   }

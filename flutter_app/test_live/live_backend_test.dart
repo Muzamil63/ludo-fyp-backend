@@ -44,7 +44,7 @@ void main() {
     }
     expect(socket.connected.value, true);
 
-    final matchId = await MatchApi.createBot(ruleSetId: 3, totalPlayers: 2, gameMode: 'ffa', difficulty: 'hard');
+    final matchId = await MatchApi.createBot(rules: const RuleChoice.preset(3), totalPlayers: 2, gameMode: 'ffa', difficulty: 'hard');
     final state = MatchState.fromJson(Map<String, dynamic>.from(await socket.emitAck('match:join', {'match_id': matchId}) as Map));
     final mySeat = state.seats.firstWhere((s) => s.playerId == me.playerId);
 

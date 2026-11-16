@@ -25,7 +25,18 @@ export interface RuleSet {
   capture_enabled: number;
   tokens_to_win: number;
   turn_seconds: number;
+  tries_when_all_home: number;
+  six_boost_after: number;
+  is_custom: number; // 1 = a player's own rules (made for one game / tournament)
 }
+
+// The rule values a player can set for a game (sent as "custom_rules"). 0/1 = off/on.
+export type CustomRules = Pick<RuleSet,
+  'six_to_unlock' | 'extra_turn_on_six' | 'extra_turn_on_capture' | 'extra_turn_on_home' | 'capture_enabled' |
+  'tokens_to_win' | 'turn_seconds' | 'tries_when_all_home' | 'six_boost_after'>;
+
+// What a "start a game" screen sends: a preset, or custom rules.
+export type RuleChoice = { rule_set_id: number } | { custom_rules: CustomRules };
 
 export type MatchType = 'bot' | 'online' | 'room' | 'tournament';
 export type MatchStatus = 'waiting' | 'in_progress' | 'finished' | 'cancelled';
@@ -116,20 +127,27 @@ export interface Participant {
   eliminated_round: number | null;
 }
 
+// One match of the bracket. Matches not drawn yet are "upcoming": no id, no seats, and `feeders` = the
+// previous round's match numbers whose winners will play here.
 export interface BracketMatch {
-  match_id: number;
+  match_id: number | null;
   round_no: number;
   match_no: number;
-  scheduled_at: string;
-  status: MatchStatus;
+  scheduled_at: string | null;
+  status: MatchStatus | 'upcoming';
   seats: Seat[];
   winner_id: number | null;
+  slots: number;
+  feeders: number[];
 }
 
 export interface TournamentDetail {
   tournament: Tournament;
   participants: Participant[];
-  rounds: { round_no: number; matches: BracketMatch[] }[];
+  rounds: { round_no: number; matches: BracketMatch[] }[]; // the FULL bracket, round 1 → final
+  total_rounds: number;
+  preview: boolean; // true before the start: the tree for a full tournament
+  rule_set: RuleSet;
   champion: Participant | null;
 }
 

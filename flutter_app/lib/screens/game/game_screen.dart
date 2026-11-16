@@ -42,6 +42,9 @@ class _GameScreenState extends State<GameScreen> {
   List<int> _present = [];
   DateTime _rollStart = DateTime.now();
   bool _resultShown = false;
+  // Goes up on every new turn / move / full state. A delayed dice animation checks it, so it never
+  // brings back an old dice value after the server already moved on (auto-play is instant).
+  int _turnSeq = 0;
 
   int? get _myPlayerId => context.read<AuthState>().player?.playerId;
   MatchInfo? get _match => _state?.match;
@@ -98,16 +101,18 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _applyState(MatchState s) {
+    _turnSeq++;
     setState(() {
       _state = s;
       _error = null;
       _deadline = s.turnDeadline;
+      _rolling = false;
       // After a reconnect it may be my turn with the dice already rolled: show my movable tokens again.
+      // Otherwise clear them (old glowing tokens would block the dice).
       final me = _mySeat;
-      if (me != null && s.match.currentSeat == me.seatNo && s.match.diceValue != null) {
-        _movable = movableTokenIds(s.tokens.where((t) => t.seatNo == me.seatNo).toList(), s.match.diceValue!, s.match.ruleSet);
-        _dice = s.match.diceValue;
-      }
+      final myRolledTurn = me != null && s.match.status == 'in_progress' && s.match.currentSeat == me.seatNo && s.match.diceValue != null;
+      _movable = myRolledTurn ? movableTokenIds(s.tokens.where((t) => t.seatNo == me.seatNo).toList(), s.match.diceValue!, s.match.ruleSet) : [];
+      if (s.match.diceValue != null) _dice = s.match.diceValue;
     });
     if (s.match.status == 'finished') {
       _showResults([
@@ -119,6 +124,7 @@ class _GameScreenState extends State<GameScreen> {
 
   // ---------- server events ----------
   void _onTurn(dynamic d) {
+    _turnSeq++;
     setState(() {
       _match!.currentSeat = d['seat_no'] as int;
       _match!.diceValue = null;
@@ -132,6 +138,7 @@ class _GameScreenState extends State<GameScreen> {
     final seatNo = d['seat_no'] as int;
     final value = d['dice_value'] as int;
     final valid = List<int>.from(d['valid_token_ids'] as List);
+    final triesLeft = (d['tries_left'] as int?) ?? 0; // "3 tries at home": all tokens in base → roll again
     final mine = _mySeat != null && seatNo == _mySeat!.seatNo;
     if (!_rolling) {
       _rollStart = DateTime.now();
@@ -139,25 +146,34 @@ class _GameScreenState extends State<GameScreen> {
     }
     // Let the dice spin for at least ~0.6 s so everyone sees the roll
     final wait = max(0, 600 - DateTime.now().difference(_rollStart).inMilliseconds);
+    final seq = _turnSeq;
     Future.delayed(Duration(milliseconds: wait), () {
       if (!mounted || _state == null) return;
+      // The server may have moved on during the animation (auto-play, or the turn passed): then only show the dice
+      final stillThisTurn = _turnSeq == seq;
       setState(() {
         _rolling = false;
         _dice = value;
         _lastRolls[seatNo] = value;
-        // No valid move = the turn is already passing on the server (current seat unknown until "game:turn")
-        final passing = valid.isEmpty;
-        _match!.diceValue = passing ? null : value;
-        if (passing) _match!.currentSeat = null;
+        if (!stillThisTurn) return;
+        // Missed: the dice is free again, and the turn passes (current seat unknown until "game:turn") unless it's a retry
+        _match!.diceValue = valid.isEmpty ? null : value;
+        if (valid.isEmpty && triesLeft == 0) _match!.currentSeat = null;
         if (mine) _movable = valid;
       });
-      if (mine && valid.isEmpty) showToast('You rolled $value', message: 'No token can move — turn passes');
+      if (mine && valid.isEmpty) {
+        showToast('You rolled $value',
+            message: triesLeft > 0
+                ? 'No token can leave the base — roll again ($triesLeft ${triesLeft == 1 ? 'try' : 'tries'} left)'
+                : 'No token can move — turn passes');
+      }
     });
   }
 
   void _onMoved(dynamic d) {
     final capturedId = d['captured_token_id'] as int?;
     final mine = _mySeat != null && d['seat_no'] == _mySeat!.seatNo;
+    _turnSeq++;
     setState(() {
       for (final t in _state!.tokens) {
         if (t.tokenId == d['token_id']) t.position = d['to_position'] as int;

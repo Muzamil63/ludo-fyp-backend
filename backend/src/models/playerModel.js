@@ -3,7 +3,7 @@ const { pool } = require('../config/db');
 
 // Columns that are safe to send to the app (never password_hash).
 const PUBLIC_COLUMNS = `p.player_id, p.display_name, p.avatar, p.player_type,
-  r.username, r.email, r.games_played, r.games_won`;
+  r.username, r.email, r.games_played, r.games_won, r.tournaments_won`;
 
 async function findById(playerId, conn = pool) {
   const [rows] = await conn.query(
@@ -100,7 +100,7 @@ async function searchRegistered(text, excludePlayerId, conn = pool) {
 
 async function leaderboard(conn = pool) {
   const [rows] = await conn.query(
-    `SELECT p.player_id, r.username, p.display_name, p.avatar, r.games_played, r.games_won
+    `SELECT p.player_id, r.username, p.display_name, p.avatar, r.games_played, r.games_won, r.tournaments_won
      FROM registered_users r JOIN players p ON p.player_id = r.player_id
      ORDER BY r.games_won DESC, r.games_played ASC, r.username ASC
      LIMIT 20`

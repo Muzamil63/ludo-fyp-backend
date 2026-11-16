@@ -5,9 +5,11 @@ const tournamentModel = require('../models/tournamentModel');
 const matchModel = require('../models/matchModel');
 const ruleSetModel = require('../models/ruleSetModel');
 const tournamentManager = require('../game/tournamentManager');
+const bracket = require('../game/bracket');
 const C = require('../game/constants');
 const httpError = require('../utils/httpError');
 const { toId, oneOf } = require('../utils/validate');
+const { readRuleChoice } = require('../utils/ruleInput');
 
 function parseFutureTime(value, field) {
   const time = new Date(value);
@@ -26,8 +28,10 @@ async function readFields(body, current = {}) {
     throw httpError(400, 'description must be text (max 255 characters)');
   }
 
-  const rule_set_id = toId(body.rule_set_id ?? current.rule_set_id ?? 1, 'rule_set_id');
-  if (!(await ruleSetModel.findById(rule_set_id))) throw httpError(404, 'Rule set not found');
+  // Rules: a preset (rule_set_id) or the creator's own (custom_rules). Editing without either keeps the rules.
+  const ruleChoice = body.rule_set_id === undefined && body.custom_rules == null && current.rule_set_id
+    ? null
+    : readRuleChoice(body);
 
   const max_participants = oneOf(Number(body.max_participants ?? current.max_participants ?? 8), C.TOURNAMENT_SIZES, 'max_participants');
   const players_per_match = oneOf(Number(body.players_per_match ?? current.players_per_match ?? 4), C.TOURNAMENT_MATCH_SIZES, 'players_per_match');
@@ -41,7 +45,15 @@ async function readFields(body, current = {}) {
     ? parseFutureTime(body.start_time, 'start_time')
     : current.start_time;
 
-  return { name: name.trim(), description, rule_set_id, max_participants, players_per_match, round_break_minutes, start_time };
+  return { name: name.trim(), description, ruleChoice, max_participants, players_per_match, round_break_minutes, start_time };
+}
+
+// The rule_set_id to save, inside the create / edit transaction (custom rules get their own new row).
+async function ruleSetIdFor(fields, current, conn) {
+  if (!fields.ruleChoice) return current.rule_set_id; // editing without touching the rules
+  const id = await ruleSetModel.resolveChoice(fields.ruleChoice, conn);
+  if (!id) throw httpError(404, 'Rule set not found');
+  return id;
 }
 
 async function findOr404(tournamentIdValue) {
@@ -85,25 +97,29 @@ async function myMatches(req, res) {
   res.json({ success: true, data: await tournamentModel.listUpcomingForPlayer(req.user.player_id) });
 }
 
-// GET /api/tournaments/:tournament_id — tournament + participants + bracket (rounds → matches → seats)
+// GET /api/tournaments/:tournament_id — tournament + participants + the FULL bracket: every round from
+// round 1 to the final. Matches not drawn yet are "upcoming" (with the matches that feed them).
 async function getOne(req, res) {
   const tournament = await findOr404(req.params.tournament_id);
   const participants = await tournamentModel.listParticipants(tournament.tournament_id);
 
-  const rounds = [];
+  const created = [];
   for (const m of await tournamentModel.listMatches(tournament.tournament_id)) {
-    let round = rounds.find((r) => r.round_no === m.round_no);
-    if (!round) {
-      round = { round_no: m.round_no, matches: [] };
-      rounds.push(round);
-    }
     const seats = await matchModel.listSeats(m.match_id);
     const winner = seats.find((s) => s.finish_position === 1);
-    round.matches.push({ ...m, seats, winner_id: winner ? winner.player_id : null });
+    created.push({ ...m, seats, winner_id: winner ? winner.player_id : null });
   }
+  // Before the start the tree is a preview for a full tournament. After the start it uses the real
+  // number of players (nobody can leave once it has started).
+  const preview = tournament.status === 'registration';
+  const playerCount = preview ? tournament.max_participants : participants.length;
+  const rounds = tournament.status === 'cancelled' && created.length === 0
+    ? []
+    : bracket.buildBracketView(bracket.bracketShape(playerCount, tournament.players_per_match), created);
   const champion = participants.find((p) => p.status === 'champion') || null;
+  const rule_set = await ruleSetModel.findById(tournament.rule_set_id); // full rule values (custom or preset)
 
-  res.json({ success: true, data: { tournament, participants, rounds, champion } });
+  res.json({ success: true, data: { tournament, rule_set, participants, rounds, total_rounds: rounds.length, preview, champion } });
 }
 
 // ---------- creator actions ----------
@@ -116,7 +132,8 @@ async function create(req, res) {
   const join = body.join !== false; // the creator also plays, unless join: false
 
   const tournamentId = await withTransaction(async (conn) => {
-    const id = await tournamentModel.create({ ...fields, creator_id: req.user.player_id }, conn);
+    const rule_set_id = await ruleSetIdFor(fields, {}, conn);
+    const id = await tournamentModel.create({ ...fields, rule_set_id, creator_id: req.user.player_id }, conn);
     if (join) await tournamentModel.addParticipant(id, req.user.player_id, conn);
     return id;
   });
@@ -135,7 +152,8 @@ async function update(req, res) {
     if (fields.max_participants < count) {
       throw httpError(400, `max_participants can't be lower than the ${count} players already joined`);
     }
-    await tournamentModel.updateDetails(t.tournament_id, fields, conn);
+    const rule_set_id = await ruleSetIdFor(fields, t, conn);
+    await tournamentModel.updateDetails(t.tournament_id, { ...fields, rule_set_id }, conn);
   });
 
   await tournamentManager.notifyMembers(tournament.tournament_id, 'edited');

@@ -5,6 +5,7 @@ class AppColors {
   static const bg = Color(0xFF0B1026);
   static const sheet = Color(0xFF18204E);
   static const card = Color(0x12FFFFFF);
+  static const cardSolid = Color(0xFF1B2354); // not see-through (bracket cards drawn over the lines)
   static const cardBorder = Color(0x1FFFFFFF);
   static const input = Color(0x14FFFFFF);
 

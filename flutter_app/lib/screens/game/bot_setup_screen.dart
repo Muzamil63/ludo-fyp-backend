@@ -1,4 +1,4 @@
-// "vs Computer" setup: number of players, mode, bot difficulty and rule set, then start.
+// "vs Computer" setup: number of players, mode, bot difficulty and rules (a preset or custom), then start.
 import 'package:flutter/material.dart';
 import '../../api/endpoints.dart';
 import '../../models.dart';
@@ -7,6 +7,7 @@ import '../../theme.dart';
 import '../../widgets/common.dart';
 import '../../widgets/form_widgets.dart';
 import '../../widgets/gradient_button.dart';
+import '../../widgets/rule_picker.dart';
 import 'game_screen.dart';
 
 class BotSetupScreen extends StatefulWidget {
@@ -16,23 +17,16 @@ class BotSetupScreen extends StatefulWidget {
 }
 
 class _BotSetupScreenState extends State<BotSetupScreen> {
-  List<RuleSet> _ruleSets = [];
-  int _ruleSetId = 1;
+  RuleChoice _rules = const RuleChoice.preset(1); // Classic
   int _players = 4;
   String _mode = 'ffa';
   String _difficulty = 'easy';
   bool _loading = false;
 
-  @override
-  void initState() {
-    super.initState();
-    MatchApi.ruleSets().then((r) => setState(() => _ruleSets = r)).catchError((err) => showError(err));
-  }
-
   Future<void> _start() async {
     setState(() => _loading = true);
     try {
-      final matchId = await MatchApi.createBot(ruleSetId: _ruleSetId, totalPlayers: _players, gameMode: _mode, difficulty: _difficulty);
+      final matchId = await MatchApi.createBot(rules: _rules, totalPlayers: _players, gameMode: _mode, difficulty: _difficulty);
       if (mounted) Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => GameScreen(matchId: matchId)));
     } catch (err) {
       showError(err);
@@ -71,16 +65,10 @@ class _BotSetupScreenState extends State<BotSetupScreen> {
                     options: const [Option('😊 Easy', 'easy'), Option('😈 Hard', 'hard')],
                     onChanged: (d) => setState(() => _difficulty = d),
                   ),
-                  if (_ruleSets.isNotEmpty)
-                    OptionPicker<int>(
-                      label: 'Rules',
-                      value: _ruleSetId,
-                      options: [for (final r in _ruleSets) Option(r.name, r.ruleSetId, hint: r.hint)],
-                      onChanged: (id) => setState(() => _ruleSetId = id),
-                    ),
+                  RulePicker(value: _rules, onChanged: (r) => setState(() => _rules = r)),
                   const Padding(
                     padding: EdgeInsets.only(bottom: 16),
-                    child: Text('Tip: "Demo" rules finish fast — only 1 token needs to reach home.', style: AppText.small),
+                    child: Text('Tip: for a quick game, tap Customise and set "Tokens home to win" to 1.', style: AppText.small),
                   ),
                   GradientButton(title: 'Start Game', icon: Icons.play_arrow, variant: ButtonVariant.gold, loading: _loading, onPressed: _start),
                 ]),

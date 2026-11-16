@@ -30,7 +30,10 @@ src/
   game/rules.ts              which tokens can move (mirror of the backend rule)
   navigation/                AppNavigator (stack + tabs), types, navigationRef
   components/                ScreenBackground, GameButton, GlassCard, LudoBoard, Dice, TokenPiece, PlayerPanel, …
-  screens/auth|home|game|rooms|tournaments|social/
+  components/RulePicker.tsx  preset chips + "⚙️ Custom" → screens/game/CustomRulesScreen.tsx (own page, returns via utils/customRulesPage.ts)
+  components/BracketTree.tsx full knockout tree (round 1 → final), lines between matches, round jump chips
+  utils/ruleText.ts          rule summaries + Classic defaults · utils/bracket.ts  round names, drawn matches
+  screens/auth|home|game|rooms|tournaments|social/   (tournaments/BracketScreen.tsx = full-screen bracket map)
 __tests__/boardLayout.test.ts
 ```
 
@@ -42,8 +45,9 @@ __tests__/boardLayout.test.ts
 ## Commands (inside `mobile/`)
 ```
 npm install
-npm start                 # Metro bundler
-npm run android           # build + install on emulator / phone
+npm start                 # Metro bundler on port 8088 (Laragon Apache uses 8081)
+npm run android           # build + install on emulator / phone (dev server port 8088)
+npm run phone             # USB phone: adb reverse for 3000 (backend) + 8088 (Metro)
 npm test                  # board layout unit tests
 npx tsc --noEmit          # type check
 ```

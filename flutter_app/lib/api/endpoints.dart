@@ -35,9 +35,10 @@ class FriendApi {
 
 class MatchApi {
   static Future<List<RuleSet>> ruleSets() async => _list(await ApiClient.get('/rule-sets'), RuleSet.fromJson);
-  static Future<int> createBot({required int ruleSetId, required int totalPlayers, required String gameMode, required String difficulty}) async {
+  // `rules` = a preset (rule_set_id) or custom_rules, see RuleChoice
+  static Future<int> createBot({required RuleChoice rules, required int totalPlayers, required String gameMode, required String difficulty}) async {
     final data = await ApiClient.post('/matches/bot', {
-      'rule_set_id': ruleSetId,
+      ...rules.toJson(),
       'total_players': totalPlayers,
       'game_mode': gameMode,
       'difficulty': difficulty,
@@ -47,8 +48,8 @@ class MatchApi {
 }
 
 class RoomApi {
-  static Future<Json> create({required int ruleSetId, required int maxPlayers, required String gameMode}) async =>
-      await ApiClient.post('/rooms', {'rule_set_id': ruleSetId, 'max_players': maxPlayers, 'game_mode': gameMode}) as Json;
+  static Future<Json> create({required RuleChoice rules, required int maxPlayers, required String gameMode}) async =>
+      await ApiClient.post('/rooms', {...rules.toJson(), 'max_players': maxPlayers, 'game_mode': gameMode}) as Json;
   static Future<Json> join(String code) async => await ApiClient.post('/rooms/join', {'room_code': code}) as Json;
   static Future<void> leave(int matchId) => ApiClient.post('/rooms/$matchId/leave');
   static Future<void> start(int matchId, bool fillWithBots) => ApiClient.post('/rooms/$matchId/start', {'fill_with_bots': fillWithBots});

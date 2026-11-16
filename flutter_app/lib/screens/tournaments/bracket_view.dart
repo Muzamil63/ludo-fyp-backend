@@ -1,14 +1,17 @@
-// The knockout bracket: one column per round, one card per match (players, winner, time, status).
+// The drawn matches of a tournament: one column per round, one card per match (players, winner, time, status).
+// (The whole tree, with the rounds still to come, is the BracketTree on the Bracket screen.)
 // The creator gets "Start now" / "Time" on waiting matches; players get "Play" on their own match.
 import 'package:flutter/material.dart';
 import '../../models.dart';
 import '../../theme.dart';
+import '../../utils/bracket.dart';
 import '../../utils/format.dart';
 import '../../widgets/common.dart';
 import '../../widgets/gradient_button.dart';
 
 class BracketView extends StatelessWidget {
-  final List<TournamentRound> rounds;
+  final List<TournamentRound> rounds; // drawn matches only (see drawnRounds), so matchId and scheduledAt are set
+  final int totalRounds;
   final int? myPlayerId;
   final bool isCreator;
   final String? nextRoundNote;
@@ -20,6 +23,7 @@ class BracketView extends StatelessWidget {
   const BracketView({
     super.key,
     required this.rounds,
+    required this.totalRounds,
     required this.myPlayerId,
     required this.isCreator,
     this.nextRoundNote,
@@ -29,12 +33,10 @@ class BracketView extends StatelessWidget {
     required this.onChangeTime,
   });
 
-  String _roundName(TournamentRound r) =>
-      r == rounds.last && r.matches.length == 1 && nextRoundNote == null ? 'Final' : 'Round ${r.roundNo}';
-
   Widget _matchCard(BracketMatch m) {
     final mine = m.seats.any((s) => s.playerId == myPlayerId);
-    final left = m.scheduledAt.difference(DateTime.now());
+    final at = m.scheduledAt!;
+    final left = at.difference(DateTime.now());
     return GlassCard(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
@@ -49,7 +51,7 @@ class BracketView extends StatelessWidget {
           const Icon(Icons.schedule, size: 14, color: AppColors.textMuted),
           const SizedBox(width: 5),
           Text(
-            m.status == 'waiting' ? (left.inSeconds > 0 ? '${formatTime(m.scheduledAt)} · in ${formatCountdown(left)}' : 'Starting…') : formatDateTime(m.scheduledAt),
+            m.status == 'waiting' ? (left.inSeconds > 0 ? '${formatTime(at)} · in ${formatCountdown(left)}' : 'Starting…') : formatDateTime(at),
             style: AppText.small,
           ),
         ]),
@@ -57,7 +59,7 @@ class BracketView extends StatelessWidget {
         for (final s in m.seats) _seatRow(m, s),
         if (mine && m.isOpen) ...[
           const SizedBox(height: 10),
-          GradientButton(title: m.status == 'in_progress' ? 'Play now' : 'Enter lobby', icon: Icons.play_arrow, size: ButtonSize.sm, variant: ButtonVariant.gold, onPressed: () => onPlay(m.matchId)),
+          GradientButton(title: m.status == 'in_progress' ? 'Play now' : 'Enter lobby', icon: Icons.play_arrow, size: ButtonSize.sm, variant: ButtonVariant.gold, onPressed: () => onPlay(m.matchId!)),
         ],
         if (isCreator && m.status == 'waiting') ...[
           const SizedBox(height: 10),
@@ -69,7 +71,7 @@ class BracketView extends StatelessWidget {
                 size: ButtonSize.sm,
                 variant: ButtonVariant.success,
                 loading: busy == 'start-${m.matchId}',
-                onPressed: () => onStartNow(m.matchId),
+                onPressed: () => onStartNow(m.matchId!),
               ),
             ),
             const SizedBox(width: 8),
@@ -118,7 +120,7 @@ class BracketView extends StatelessWidget {
             width: 230,
             margin: const EdgeInsets.only(right: 12),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(_roundName(r), style: const TextStyle(color: AppColors.gold, fontWeight: FontWeight.w900, fontSize: 15))),
+              Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(roundName(r.roundNo, totalRounds), style: const TextStyle(color: AppColors.gold, fontWeight: FontWeight.w900, fontSize: 15))),
               for (final m in r.matches) _matchCard(m),
             ]),
           ),

@@ -1,4 +1,5 @@
-// Create a tournament, or edit it (creator, before it starts): name, rules, size, format, start time, breaks.
+// Create a tournament, or edit it (creator, before it starts): name, rules (preset or custom), size (up to 64),
+// format, start time, breaks.
 import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../api/api_client.dart';
@@ -11,6 +12,7 @@ import '../../utils/pick_date_time.dart';
 import '../../widgets/common.dart';
 import '../../widgets/form_widgets.dart';
 import '../../widgets/gradient_button.dart';
+import '../../widgets/rule_picker.dart';
 import 'tournament_detail_screen.dart';
 
 class TournamentFormScreen extends StatefulWidget {
@@ -23,8 +25,7 @@ class TournamentFormScreen extends StatefulWidget {
 class _TournamentFormScreenState extends State<TournamentFormScreen> {
   final _name = TextEditingController();
   final _description = TextEditingController();
-  List<RuleSet> _ruleSets = [];
-  int _ruleSetId = 3;
+  RuleChoice _rules = const RuleChoice.preset(1); // Classic (Customise to change)
   int _maxPlayers = 4;
   int _perMatch = 2;
   DateTime _startTime = DateTime.now().add(const Duration(minutes: 15));
@@ -39,7 +40,6 @@ class _TournamentFormScreenState extends State<TournamentFormScreen> {
   @override
   void initState() {
     super.initState();
-    MatchApi.ruleSets().then((r) => setState(() => _ruleSets = r)).catchError((_) {});
     if (!_editing) {
       _loaded = true;
       return;
@@ -47,10 +47,11 @@ class _TournamentFormScreenState extends State<TournamentFormScreen> {
     // Editing: fill the form with the current values
     TournamentApi.detail(widget.tournamentId!).then((d) {
       final t = d.tournament;
+      final rs = d.ruleSet;
       setState(() {
         _name.text = t.name;
         _description.text = t.description ?? '';
-        _ruleSetId = t.ruleSetId;
+        _rules = rs != null && rs.isCustom ? RuleChoice.custom(rs.rules) : RuleChoice.preset(t.ruleSetId);
         _maxPlayers = t.maxParticipants;
         _perMatch = t.playersPerMatch;
         _startTime = t.startTime;
@@ -85,7 +86,7 @@ class _TournamentFormScreenState extends State<TournamentFormScreen> {
     final body = <String, dynamic>{
       'name': _name.text.trim(),
       'description': _description.text.trim().isEmpty ? null : _description.text.trim(),
-      'rule_set_id': _ruleSetId,
+      ..._rules.toJson(), // rule_set_id (a preset) or custom_rules
       'max_participants': _maxPlayers,
       'players_per_match': _perMatch,
       'start_time': _startTime.toUtc().toIso8601String(),
@@ -129,7 +130,7 @@ class _TournamentFormScreenState extends State<TournamentFormScreen> {
                   OptionPicker<int>(
                     label: 'Players',
                     value: _maxPlayers,
-                    options: [for (final n in [2, 4, 8, 16]) Option('$n', n)],
+                    options: [for (final n in [2, 4, 8, 16, 32, 64]) Option('$n', n)],
                     onChanged: (n) => setState(() => _maxPlayers = n),
                   ),
                   OptionPicker<int>(
@@ -142,13 +143,7 @@ class _TournamentFormScreenState extends State<TournamentFormScreen> {
                     padding: const EdgeInsets.only(bottom: 16),
                     child: Text('≈ $rounds round${rounds > 1 ? 's' : ''} to crown a champion', style: const TextStyle(color: AppColors.gold, fontSize: 13, fontWeight: FontWeight.w700)),
                   ),
-                  if (_ruleSets.isNotEmpty)
-                    OptionPicker<int>(
-                      label: 'Rules',
-                      value: _ruleSetId,
-                      options: [for (final r in _ruleSets) Option(r.name, r.ruleSetId, hint: r.hint)],
-                      onChanged: (id) => setState(() => _ruleSetId = id),
-                    ),
+                  RulePicker(value: _rules, onChanged: (r) => setState(() => _rules = r)),
                   const Padding(padding: EdgeInsets.only(bottom: 8), child: Text('START TIME', style: AppText.label)),
                   GradientButton(title: formatDateTime(_startTime), icon: Icons.event, variant: ButtonVariant.ghost, size: ButtonSize.md, onPressed: _chooseTime),
                   const SizedBox(height: 10),

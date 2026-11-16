@@ -108,14 +108,20 @@ class OptionPicker<T> extends StatelessWidget {
             color: selected ? AppColors.gold.withAlpha(40) : Colors.white.withAlpha(18),
             border: Border.all(color: selected ? AppColors.gold : Colors.white.withAlpha(31), width: 1.5),
           ),
+          // scaleDown: a long label in a narrow chip (6 chips in a row, "⚙️ Custom") shrinks instead of being cut
           child: Column(children: [
-            Text(o.label,
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: selected ? AppColors.gold : AppColors.textDim, fontWeight: FontWeight.w800, fontSize: 14)),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(o.label,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  style: TextStyle(color: selected ? AppColors.gold : AppColors.textDim, fontWeight: FontWeight.w800, fontSize: 14)),
+            ),
             if (o.hint != null)
-              Text(o.hint!, textAlign: TextAlign.center, maxLines: 1, style: TextStyle(color: selected ? const Color(0xFFFFE3A1) : AppColors.textMuted, fontSize: 10)),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(o.hint!, textAlign: TextAlign.center, maxLines: 1, style: TextStyle(color: selected ? const Color(0xFFFFE3A1) : AppColors.textMuted, fontSize: 10)),
+              ),
           ]),
         ),
       ),

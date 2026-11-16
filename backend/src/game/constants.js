@@ -28,7 +28,7 @@ module.exports = {
   // Tournaments
   TOURNAMENT_LOBBY_SECONDS: 60, // round 1 matches start 1 min after the tournament starts (lobby time)
   TOURNAMENT_TICK_MS: 5000,     // how often the server checks for tournaments / matches that should start
-  TOURNAMENT_SIZES: [2, 4, 8, 16],
+  TOURNAMENT_SIZES: [2, 4, 8, 16, 32, 64],
   TOURNAMENT_MATCH_SIZES: [2, 4], // players per match: 2 = 1v1 knockout
 
   // Online matchmaking queues

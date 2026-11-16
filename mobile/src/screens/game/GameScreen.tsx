@@ -48,6 +48,10 @@ export default function GameScreen({ navigation, route }: Props) {
   const [present, setPresent] = useState<number[]>([]);
   const rollStart = useRef(0);
   const rollingRef = useRef(false);
+  const movingRef = useRef(false);
+  // Goes up on every new turn / move / full state. A delayed dice animation checks it, so it never
+  // brings back an old dice value after the server already moved on (auto-play is instant).
+  const turnSeq = useRef(0);
 
   const match = state?.match;
   const mySeat = state?.seats.find((s) => s.player_id === player?.player_id);
@@ -57,15 +61,18 @@ export default function GameScreen({ navigation, route }: Props) {
 
   // ---------- load / reload the full match ----------
   const applyState = useCallback((s: MatchState) => {
+    turnSeq.current += 1;
+    rollingRef.current = false;
+    setRolling(false);
     setState(s);
     setDeadline(s.turn_deadline);
     if (s.match.status === 'finished') setRankings(rankingsFromSeats(s.seats));
     // After a reconnect it may be my turn with the dice already rolled: show my movable tokens again.
+    // Otherwise clear them (old glowing tokens would block the dice).
     const me = s.seats.find((x) => x.player_id === player?.player_id);
-    if (me && s.match.current_seat === me.seat_no && s.match.dice_value) {
-      setMovable(movableTokenIds(s.tokens.filter((t) => t.seat_no === me.seat_no), s.match.dice_value, s.match.rule_set));
-      setDice(s.match.dice_value);
-    }
+    const myRolledTurn = !!me && s.match.status === 'in_progress' && s.match.current_seat === me.seat_no && !!s.match.dice_value;
+    setMovable(myRolledTurn ? movableTokenIds(s.tokens.filter((t) => t.seat_no === me!.seat_no), s.match.dice_value!, s.match.rule_set) : []);
+    if (s.match.dice_value) setDice(s.match.dice_value);
   }, [player?.player_id]);
 
   const join = useCallback(async () => {
@@ -111,13 +118,14 @@ export default function GameScreen({ navigation, route }: Props) {
 
   useSocketEvent('game:turn', (d: { match_id: number; seat_no: number; deadline: number | null }) => {
     if (!forThisMatch(d)) return;
+    turnSeq.current += 1;
     setState((s) => s && { ...s, match: { ...s.match, current_seat: d.seat_no, dice_value: null } });
     setDeadline(d.deadline);
     setMovable([]);
     if (mySeat && d.seat_no === mySeat.seat_no) Vibration.vibrate(40);
   });
 
-  useSocketEvent('game:rolled', (d: { match_id: number; seat_no: number; dice_value: number; valid_token_ids: number[] }) => {
+  useSocketEvent('game:rolled', (d: { match_id: number; seat_no: number; dice_value: number; valid_token_ids: number[]; tries_left?: number }) => {
     if (!forThisMatch(d)) return;
     const mine = !!mySeat && d.seat_no === mySeat.seat_no;
     if (!rollingRef.current) {
@@ -127,23 +135,31 @@ export default function GameScreen({ navigation, route }: Props) {
     }
     // Let the dice spin for at least ~0.6 s so everyone sees the roll
     const wait = Math.max(0, 600 - (Date.now() - rollStart.current));
+    const seq = turnSeq.current;
     setTimeout(() => {
       rollingRef.current = false;
       setRolling(false);
       setDice(d.dice_value);
       setLastRolls((r) => ({ ...r, [d.seat_no]: d.dice_value }));
-      // No valid move = the turn is already passing on the server (current_seat null until "game:turn" arrives)
-      const passing = d.valid_token_ids.length === 0;
-      setState((s) => s && { ...s, match: { ...s.match, dice_value: passing ? null : d.dice_value, current_seat: passing ? null : s.match.current_seat } });
-      if (mine) {
-        setMovable(d.valid_token_ids);
-        if (!d.valid_token_ids.length) showToast('info', `You rolled ${d.dice_value}`, 'No token can move — turn passes');
+      const missed = d.valid_token_ids.length === 0;
+      const triesLeft = d.tries_left ?? 0; // "3 tries at home": all tokens in base → the same player rolls again
+      if (mine && missed) {
+        showToast('info', `You rolled ${d.dice_value}`, triesLeft > 0
+          ? `No token can leave the base — roll again (${triesLeft} ${triesLeft === 1 ? 'try' : 'tries'} left)`
+          : 'No token can move — turn passes');
       }
+      // The server already moved on during the animation (auto-play, or the turn passed): keep the newer state
+      if (turnSeq.current !== seq) return;
+      // Missed: the dice is free again, and the turn passes (current_seat null until "game:turn") unless it's a retry
+      const passing = missed && triesLeft === 0;
+      setState((s) => s && { ...s, match: { ...s.match, dice_value: missed ? null : d.dice_value, current_seat: passing ? null : s.match.current_seat } });
+      if (mine) setMovable(d.valid_token_ids);
     }, wait);
   });
 
   useSocketEvent('game:moved', (d: { match_id: number; seat_no: number; token_id: number; to_position: number; captured_token_id: number | null; extra_turn: boolean; is_auto: boolean }) => {
     if (!forThisMatch(d)) return;
+    turnSeq.current += 1;
     setState((s) =>
       s && {
         ...s,
@@ -185,7 +201,7 @@ export default function GameScreen({ navigation, route }: Props) {
 
   // ---------- my actions ----------
   async function roll() {
-    if (!canRoll) return;
+    if (!canRoll || rollingRef.current) return; // the ref also stops a fast double tap
     rollStart.current = Date.now();
     rollingRef.current = true;
     setRolling(true);
@@ -199,13 +215,16 @@ export default function GameScreen({ navigation, route }: Props) {
   }
 
   async function move(tokenId: number) {
-    if (!movable.includes(tokenId)) return;
+    if (!movable.includes(tokenId) || movingRef.current) return; // the ref stops a fast double tap
+    movingRef.current = true;
     setMovable([]);
     try {
       await emitAck('game:move', { match_id: matchId, token_id: tokenId });
     } catch (err) {
       showToast('error', errorMessage(err));
       join(); // get the real state back from the server
+    } finally {
+      movingRef.current = false;
     }
   }
 

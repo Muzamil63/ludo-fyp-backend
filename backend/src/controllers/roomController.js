@@ -10,6 +10,7 @@ const gameManager = require('../game/gameManager');
 const C = require('../game/constants');
 const { getIO } = require('../sockets/io');
 const { generateRoomCode } = require('../utils/roomCode');
+const { readRuleChoice } = require('../utils/ruleInput');
 const httpError = require('../utils/httpError');
 const { toId, oneOf } = require('../utils/validate');
 
@@ -35,16 +36,17 @@ async function findRoomOr404(matchIdValue) {
   return room;
 }
 
-// POST /api/rooms  { rule_set_id, max_players, game_mode }
+// POST /api/rooms  { rule_set_id OR custom_rules, max_players, game_mode }
 async function createRoom(req, res) {
   const body = req.body || {};
-  const ruleSetId = toId(body.rule_set_id ?? 1, 'rule_set_id');
+  const ruleChoice = readRuleChoice(body); // a preset, or the host's own rules
   const maxPlayers = oneOf(Number(body.max_players ?? 4), [2, 3, 4], 'max_players');
   const gameMode = oneOf(body.game_mode ?? 'ffa', ['ffa', '2v2'], 'game_mode');
   if (gameMode === '2v2' && maxPlayers !== 4) throw httpError(400, '2v2 needs max_players = 4');
-  if (!(await ruleSetModel.findById(ruleSetId))) throw httpError(404, 'Rule set not found');
 
   const result = await withTransaction(async (conn) => {
+    const ruleSetId = await ruleSetModel.resolveChoice(ruleChoice, conn); // custom rules → new rule_sets row
+    if (!ruleSetId) throw httpError(404, 'Rule set not found');
     let roomCode = generateRoomCode();
     while (await roomModel.codeExists(roomCode, conn)) roomCode = generateRoomCode();
 

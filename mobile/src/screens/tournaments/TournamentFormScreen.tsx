@@ -1,4 +1,5 @@
-// Create a tournament, or edit it (creator, before it starts): name, rules, size, format, start time, breaks.
+// Create a tournament, or edit it (creator, before it starts): name, rules (preset or custom), size (up to 64),
+// format, start time, breaks.
 import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -9,16 +10,17 @@ import GlassCard from '../../components/GlassCard';
 import TextField from '../../components/TextField';
 import OptionPicker from '../../components/OptionPicker';
 import GameButton from '../../components/GameButton';
+import RulePicker from '../../components/RulePicker';
 import LoadingView from '../../components/LoadingView';
-import { matchApi, tournamentApi } from '../../api/endpoints';
+import { tournamentApi } from '../../api/endpoints';
 import { errorMessage } from '../../api/client';
 import { useNotify } from '../../context/NotificationContext';
 import { pickDateTime } from '../../utils/pickDateTime';
 import { formatDateTime } from '../../utils/format';
-import { ruleSetHint } from '../game/BotSetupScreen';
+import { rulesOf } from '../../utils/ruleText';
 import { colors } from '../../theme';
 import type { RootStackParamList } from '../../navigation/types';
-import type { RuleSet } from '../../types';
+import type { RuleChoice } from '../../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TournamentForm'>;
 const inMinutes = (m: number) => new Date(Date.now() + m * 60000);
@@ -26,14 +28,13 @@ const inMinutes = (m: number) => new Date(Date.now() + m * 60000);
 export default function TournamentFormScreen({ navigation, route }: Props) {
   const editId = route.params?.tournamentId;
   const { showToast } = useNotify();
-  const [ruleSets, setRuleSets] = useState<RuleSet[]>([]);
   const [loaded, setLoaded] = useState(!editId);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [ruleSetId, setRuleSetId] = useState(3);
+  const [rules, setRules] = useState<RuleChoice>({ rule_set_id: 1 }); // Classic (Customise to change)
   const [maxPlayers, setMaxPlayers] = useState(4);
   const [perMatch, setPerMatch] = useState(2);
   const [startTime, setStartTime] = useState(inMinutes(15));
@@ -41,15 +42,14 @@ export default function TournamentFormScreen({ navigation, route }: Props) {
   const [join, setJoin] = useState(true);
 
   useEffect(() => {
-    matchApi.ruleSets().then(setRuleSets).catch(() => {});
     if (!editId) return;
     // Editing: fill the form with the current values
     tournamentApi
       .detail(editId)
-      .then(({ tournament: t }) => {
+      .then(({ tournament: t, rule_set }) => {
         setName(t.name);
         setDescription(t.description || '');
-        setRuleSetId(t.rule_set_id);
+        setRules(rule_set?.is_custom ? { custom_rules: rulesOf(rule_set) } : { rule_set_id: t.rule_set_id });
         setMaxPlayers(t.max_participants);
         setPerMatch(t.players_per_match);
         setStartTime(new Date(t.start_time));
@@ -75,7 +75,7 @@ export default function TournamentFormScreen({ navigation, route }: Props) {
     const body = {
       name: name.trim(),
       description: description.trim() || null,
-      rule_set_id: ruleSetId,
+      ...rules, // rule_set_id (a preset) or custom_rules
       max_participants: maxPlayers,
       players_per_match: perMatch,
       start_time: startTime.toISOString(),
@@ -117,13 +117,12 @@ export default function TournamentFormScreen({ navigation, route }: Props) {
           <TextField label="Description (optional)" icon={FileText} value={description} onChangeText={setDescription} placeholder="Prize, rules, anything…" maxLength={255} />
 
           <OptionPicker label="Players" value={maxPlayers} onChange={setMaxPlayers}
-            options={[2, 4, 8, 16].map((n) => ({ label: String(n), value: n }))} />
+            options={[2, 4, 8, 16, 32, 64].map((n) => ({ label: String(n), value: n }))} />
           <OptionPicker label="Match format" value={perMatch} onChange={setPerMatch}
             options={[{ label: '1 vs 1', value: 2, hint: 'classic knockout' }, { label: '4 players', value: 4, hint: 'winner advances' }]} />
           <Text style={styles.preview}>≈ {rounds} round{rounds > 1 ? 's' : ''} to crown a champion</Text>
 
-          <OptionPicker label="Rules" value={ruleSetId} onChange={setRuleSetId}
-            options={ruleSets.map((r) => ({ label: r.name, value: r.rule_set_id, hint: ruleSetHint(r) }))} />
+          <RulePicker value={rules} onChange={setRules} />
 
           <Text style={styles.label}>Start time</Text>
           <GameButton title={formatDateTime(startTime)} icon={CalendarClock} variant="ghost" size="md" onPress={chooseTime} />

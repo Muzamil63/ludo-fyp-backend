@@ -9,6 +9,7 @@ import '../../models.dart';
 import '../../state/auth_state.dart';
 import '../../state/notifications.dart';
 import '../../theme.dart';
+import '../../utils/rule_text.dart';
 import '../../widgets/common.dart';
 import '../../widgets/form_widgets.dart';
 import '../../widgets/gradient_button.dart';
@@ -160,7 +161,10 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
                   const Text('ROOM CODE', style: TextStyle(color: AppColors.textDim, fontWeight: FontWeight.w800, letterSpacing: 3, fontSize: 12)),
                   const SizedBox(height: 8),
                   Text(widget.roomCode, style: const TextStyle(color: AppColors.gold, fontSize: 44, fontWeight: FontWeight.w900, letterSpacing: 8)),
-                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4, bottom: 10),
+                    child: Text(ruleSummary(s.match.ruleSet.rules), textAlign: TextAlign.center, style: const TextStyle(color: AppColors.textDim, fontSize: 12)),
+                  ),
                   GradientButton(
                     title: 'Copy code',
                     icon: Icons.copy,

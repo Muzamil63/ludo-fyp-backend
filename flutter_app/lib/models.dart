@@ -31,21 +31,66 @@ class Player {
   bool get isGuest => playerType == 'guest';
 }
 
+/// The rule values a player can set for a game, keyed like the API ("custom_rules"). 0/1 = off/on.
+/// Keys: six_to_unlock, extra_turn_on_six, extra_turn_on_capture, extra_turn_on_home, capture_enabled,
+/// tokens_to_win, turn_seconds, tries_when_all_home, six_boost_after.
+typedef CustomRules = Map<String, int>;
+
 class RuleSet {
   final int ruleSetId;
   final String name;
   final bool sixToUnlock;
+  final bool extraTurnOnSix;
+  final bool extraTurnOnCapture;
+  final bool extraTurnOnHome;
+  final bool captureEnabled;
   final int tokensToWin;
   final int turnSeconds;
+  final int triesWhenAllHome;
+  final int sixBoostAfter; // 0 = completely fair dice
+  final bool isCustom; // a player's own rules (made for one game / tournament, named "Custom")
 
+  // The ?? defaults are the Classic values, so a short row (e.g. in a test) still works.
   RuleSet.fromJson(Map<String, dynamic> j)
       : ruleSetId = _int(j['rule_set_id']),
         name = j['name'] as String,
         sixToUnlock = _int(j['six_to_unlock']) == 1,
+        extraTurnOnSix = (_intOrNull(j['extra_turn_on_six']) ?? 1) == 1,
+        extraTurnOnCapture = (_intOrNull(j['extra_turn_on_capture']) ?? 1) == 1,
+        extraTurnOnHome = (_intOrNull(j['extra_turn_on_home']) ?? 1) == 1,
+        captureEnabled = (_intOrNull(j['capture_enabled']) ?? 1) == 1,
         tokensToWin = _int(j['tokens_to_win']),
-        turnSeconds = _int(j['turn_seconds']);
+        turnSeconds = _int(j['turn_seconds']),
+        triesWhenAllHome = _intOrNull(j['tries_when_all_home']) ?? 3,
+        sixBoostAfter = _intOrNull(j['six_boost_after']) ?? 6,
+        isCustom = (_intOrNull(j['is_custom']) ?? 0) == 1;
 
-  String get hint => '$tokensToWin home · ${turnSeconds}s';
+  /// Only the rule values (no id / name), in the shape the server takes as "custom_rules".
+  CustomRules get rules => {
+        'six_to_unlock': sixToUnlock ? 1 : 0,
+        'extra_turn_on_six': extraTurnOnSix ? 1 : 0,
+        'extra_turn_on_capture': extraTurnOnCapture ? 1 : 0,
+        'extra_turn_on_home': extraTurnOnHome ? 1 : 0,
+        'capture_enabled': captureEnabled ? 1 : 0,
+        'tokens_to_win': tokensToWin,
+        'turn_seconds': turnSeconds,
+        'tries_when_all_home': triesWhenAllHome,
+        'six_boost_after': sixBoostAfter,
+      };
+}
+
+/// What a "start a game" screen sends: a preset (rule_set_id) or the player's own rules (custom_rules).
+class RuleChoice {
+  final int? ruleSetId;
+  final CustomRules? custom;
+  const RuleChoice.preset(int id)
+      : ruleSetId = id,
+        custom = null;
+  const RuleChoice.custom(CustomRules rules)
+      : ruleSetId = null,
+        custom = rules;
+
+  Map<String, dynamic> toJson() => custom != null ? {'custom_rules': custom} : {'rule_set_id': ruleSetId};
 }
 
 class Seat {
@@ -205,23 +250,29 @@ class Participant {
         eliminatedRound = _intOrNull(j['eliminated_round']);
 }
 
+/// One match of the bracket. Matches not drawn yet are "upcoming": no id, no time, no seats, and
+/// `feeders` = the previous round's match numbers whose winners will play here.
 class BracketMatch {
-  final int matchId;
+  final int? matchId; // null = not drawn yet
   final int roundNo;
   final int matchNo;
-  final DateTime scheduledAt;
-  final String status;
+  final DateTime? scheduledAt; // null = not drawn yet
+  final String status; // waiting | in_progress | finished | cancelled | upcoming
   final List<Seat> seats;
   final int? winnerId;
+  final int slots; // how many players play in this match
+  final List<int> feeders; // [] in round 1
 
   BracketMatch.fromJson(Map<String, dynamic> j)
-      : matchId = _int(j['match_id']),
+      : matchId = _intOrNull(j['match_id']),
         roundNo = _int(j['round_no']),
         matchNo = _int(j['match_no']),
-        scheduledAt = _date(j['scheduled_at']),
+        scheduledAt = _dateOrNull(j['scheduled_at']),
         status = j['status'] as String,
         seats = (j['seats'] as List).map((s) => Seat.fromJson(s as Map<String, dynamic>)).toList(),
-        winnerId = _intOrNull(j['winner_id']);
+        winnerId = _intOrNull(j['winner_id']),
+        slots = _intOrNull(j['slots']) ?? (j['seats'] as List).length,
+        feeders = [for (final f in (j['feeders'] as List? ?? const [])) _int(f)];
 
   bool get isOpen => status == 'waiting' || status == 'in_progress';
 }
@@ -229,6 +280,7 @@ class BracketMatch {
 class TournamentRound {
   final int roundNo;
   final List<BracketMatch> matches;
+  TournamentRound(this.roundNo, this.matches);
   TournamentRound.fromJson(Map<String, dynamic> j)
       : roundNo = _int(j['round_no']),
         matches = (j['matches'] as List).map((m) => BracketMatch.fromJson(m as Map<String, dynamic>)).toList();
@@ -236,14 +288,20 @@ class TournamentRound {
 
 class TournamentDetail {
   final Tournament tournament;
+  final RuleSet? ruleSet; // the full rule values (a preset or the creator's custom rules)
   final List<Participant> participants;
-  final List<TournamentRound> rounds;
+  final List<TournamentRound> rounds; // the FULL bracket, round 1 → final
+  final int totalRounds;
+  final bool preview; // true before the start: the tree for a full tournament
   final Participant? champion;
 
   TournamentDetail.fromJson(Map<String, dynamic> j)
       : tournament = Tournament.fromJson(j['tournament'] as Map<String, dynamic>),
+        ruleSet = j['rule_set'] == null ? null : RuleSet.fromJson(j['rule_set'] as Map<String, dynamic>),
         participants = (j['participants'] as List).map((p) => Participant.fromJson(p as Map<String, dynamic>)).toList(),
         rounds = (j['rounds'] as List).map((r) => TournamentRound.fromJson(r as Map<String, dynamic>)).toList(),
+        totalRounds = _intOrNull(j['total_rounds']) ?? (j['rounds'] as List).length,
+        preview = j['preview'] == true,
         champion = j['champion'] == null ? null : Participant.fromJson(j['champion'] as Map<String, dynamic>);
 }
 

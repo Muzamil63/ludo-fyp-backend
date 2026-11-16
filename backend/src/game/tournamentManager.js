@@ -7,7 +7,7 @@ const inviteModel = require('../models/tournamentInviteModel');
 const matchModel = require('../models/matchModel');
 const matchSetup = require('./matchSetup');
 const gameManager = require('./gameManager');
-const engine = require('./ludoEngine');
+const bracket = require('./bracket');
 const { getIO } = require('../sockets/io');
 const httpError = require('../utils/httpError');
 const C = require('./constants');
@@ -67,10 +67,14 @@ async function startTournament(tournamentId, { cancelIfTooFew = false } = {}) {
 }
 
 // Draws one round: creates its matches (status waiting) with a start time, and tells each player.
+// Round 1 is a random draw. Later rounds follow the fixed bracket: the previous round's winners, in match
+// order, are cut into neighbouring groups (winners of matches 1 + 2 meet in match 1, and so on).
 async function buildRound(tournamentId, roundNo, delaySeconds) {
   const t = await tournamentModel.findById(tournamentId);
-  const players = shuffle(await tournamentModel.listActivePlayerIds(tournamentId));
-  const groups = engine.makeTournamentGroups(players, t.players_per_match);
+  const players = roundNo === 1
+    ? shuffle(await tournamentModel.listActivePlayerIds(tournamentId))
+    : await tournamentModel.listRoundWinners(tournamentId, roundNo - 1);
+  const groups = bracket.splitIntoGroups(players, t.players_per_match);
 
   for (let i = 0; i < groups.length; i++) {
     const matchId = await matchSetup.createWithPlayers({

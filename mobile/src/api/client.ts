@@ -1,5 +1,6 @@
 // One place that talks to the REST API. Adds the JWT, unwraps { success, data }, turns errors into ApiError.
 import { DEFAULT_SERVER_URL, REQUEST_TIMEOUT_MS } from '../config';
+import { findServer } from './findServer';
 
 let serverUrl = DEFAULT_SERVER_URL;
 let authToken: string | null = null;
@@ -20,7 +21,7 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+async function request<T>(method: string, path: string, body?: unknown, retry = true): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
@@ -36,7 +37,14 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
       signal: controller.signal,
     });
   } catch {
-    throw new ApiError(`Can't reach the server at ${serverUrl}. Check it is running and the address in Settings.`, 0);
+    clearTimeout(timer);
+    // No connection: the backend may be at another address (USB cable out, other Wi-Fi...). Look once more.
+    const found = retry ? await findServer(serverUrl) : null;
+    if (found && found !== serverUrl) {
+      setServerUrl(found);
+      return request<T>(method, path, body, false);
+    }
+    throw new ApiError(`Can't reach the server at ${serverUrl}. Is the backend running? Phone and PC on the same Wi-Fi (or USB connected)?`, 0);
   } finally {
     clearTimeout(timer);
   }
