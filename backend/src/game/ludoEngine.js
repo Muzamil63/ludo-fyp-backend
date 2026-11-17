@@ -3,11 +3,14 @@
 // A token is { token_id, seat_no, color, team_no, position }. "rules" is a row from rule_sets.
 const C = require('./constants');
 
-// The dice, with bad-luck protection. Normally a fair dice (each number 1 in 6). But after
-// rules.six_boost_after rolls in a row without a 6, a 6 is 1 in 3 until the player rolls one, so nobody waits
-// very long for a 6 (same rule for every player; 0 = always fair). randomInt is crypto.randomInt, passed in
-// so this function stays pure and testable.
-function rollDiceValue(rollsSinceSix, rules, randomInt) {
+// The dice. Normally fair (each number 1 in 6), with two kinds of help, the same for every player:
+//  1. Stuck in base (none of your tokens on the board): a 6 is guaranteed by your
+//     rules.tries_when_all_home-th roll at the latest, counted over your own turns (one roll per turn; 0 = off).
+//  2. Bad-luck protection: after rules.six_boost_after rolls in a row without a 6, a 6 is 1 in 3 until the
+//     player rolls one (0 = always fair).
+// randomInt is crypto.randomInt, passed in so this function stays pure and testable.
+function rollDiceValue(rollsSinceSix, rules, randomInt, stuckInBase = false) {
+  if (stuckInBase && rules.tries_when_all_home > 0 && rollsSinceSix + 1 >= rules.tries_when_all_home) return 6;
   const boosted = rules.six_boost_after > 0 && rollsSinceSix >= rules.six_boost_after;
   if (!boosted) return randomInt(1, 7); // 1..6
   return randomInt(0, 3) === 0 ? 6 : randomInt(1, 6); // 6 = 1 in 3, the other 2 in 3 are 1..5
@@ -32,13 +35,10 @@ function getValidMoves(seatTokens, dice, rules) {
   return moves;
 }
 
-// "3 tries at home" (a traditional rule): while none of the seat's tokens is on the board (all in base,
-// or already home), a roll that cannot move gives another try, up to rules.tries_when_all_home rolls a turn.
-// triesUsed = missed rolls already made this turn. Returns how many tries are left after this miss.
-function triesLeftAfterMiss(seatTokens, triesUsed, rules) {
-  const noneOnBoard = seatTokens.every((t) => t.position === C.BASE_POS || t.position === C.HOME_POS);
-  if (!noneOnBoard) return 0;
-  return Math.max(0, (rules.tries_when_all_home || 1) - (triesUsed + 1));
+// True while none of the seat's tokens is on the board: some are in base and the rest (if any) are home.
+function stuckInBase(seatTokens) {
+  return seatTokens.some((t) => t.position === C.BASE_POS) &&
+    seatTokens.every((t) => t.position === C.BASE_POS || t.position === C.HOME_POS);
 }
 
 // Turns a colour-relative position into a shared track cell (0-51). Null for base / home column / home.
@@ -112,7 +112,7 @@ module.exports = {
   rollDiceValue,
   unlockValues,
   getValidMoves,
-  triesLeftAfterMiss,
+  stuckInBase,
   toGlobalCell,
   isSafeCell,
   findCapture,

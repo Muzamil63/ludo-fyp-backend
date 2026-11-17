@@ -59,8 +59,8 @@ export default function CustomRulesScreen({ navigation, route }: Props) {
 
         <GlassCard style={styles.card}>
           <Text style={styles.section}>Dice help</Text>
-          <OptionPicker label="Tries for a 6 while all tokens are in base" value={rules.tries_when_all_home} onChange={set('tries_when_all_home')}
-            options={[1, 3, 5].map((n) => ({ label: String(n), value: n }))} />
+          <OptionPicker label="A 6 is guaranteed by try (while all tokens are in base)" value={rules.tries_when_all_home} onChange={set('tries_when_all_home')}
+            options={[...[3, 4, 5].map((n) => ({ label: String(n), value: n })), { label: 'Off', value: 0 }]} />
           <OptionPicker label="Lucky-6 help (no very long waits for a 6)" value={rules.six_boost_after ? 1 : 0}
             onChange={(v) => set('six_boost_after')(v ? 6 : 0)} options={ON_OFF} />
         </GlassCard>

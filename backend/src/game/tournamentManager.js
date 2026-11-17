@@ -156,13 +156,17 @@ async function onMatchFinished(matchId) {
       return { ...base, finished: true, championId: active[0] ?? null };
     }
     await tournamentModel.update(t.tournament_id, { current_round: slot.round_no + 1 }, conn);
-    return { ...base, nextRound: slot.round_no + 1, breakSeconds: t.round_break_minutes * 60 };
+    // Fixed schedule: the next round starts at its planned time, or after the short lobby if that time has passed
+    const delaySeconds = await tournamentModel.secondsUntilRound(
+      t.tournament_id, slot.round_no + 1, t.round_break_minutes, C.TOURNAMENT_LOBBY_SECONDS, conn
+    );
+    return { ...base, nextRound: slot.round_no + 1, delaySeconds };
   });
   if (!result) return;
 
   await notifyMembers(result.tournamentId, 'match_finished', { match_id: matchId });
   if (result.nextRound) {
-    await buildRound(result.tournamentId, result.nextRound, result.breakSeconds);
+    await buildRound(result.tournamentId, result.nextRound, result.delaySeconds);
     await notifyMembers(result.tournamentId, 'round_scheduled', { round_no: result.nextRound });
   }
   if (result.finished) {

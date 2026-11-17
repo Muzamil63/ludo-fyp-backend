@@ -21,7 +21,7 @@ const _pad = EdgeInsets.symmetric(horizontal: 16, vertical: 12); // space around
 class BracketTree extends StatefulWidget {
   final List<TournamentRound> rounds;
   final int? myPlayerId;
-  final bool preview; // before the start: empty "open slot" places
+  final bool preview; // before the start: the players who joined so far, then "open slot" places
   final void Function(int matchId)? onOpenMatch;
   const BracketTree({super.key, required this.rounds, this.myPlayerId, required this.preview, this.onOpenMatch});
   @override
@@ -210,9 +210,10 @@ class _MatchCard extends StatelessWidget {
     final m = match;
     if (m.status == 'in_progress') return ('● LIVE', AppColors.danger);
     if (m.status == 'finished') return ('Done', AppColors.textMuted);
-    if (m.status == 'waiting' && m.scheduledAt != null) return (formatTime(m.scheduledAt!), AppColors.info);
     if (m.status == 'cancelled') return ('Cancelled', AppColors.textMuted);
-    return (preview ? '' : 'Upcoming', AppColors.textMuted);
+    // A drawn match shows its time in blue; an upcoming one shows the planned time of the fixed schedule in grey
+    if (m.scheduledAt != null) return (formatTime(m.scheduledAt!), m.status == 'waiting' ? AppColors.info : AppColors.textMuted);
+    return ('Upcoming', AppColors.textMuted);
   }
 
   Widget _row({required Color? dot, required Widget text, Widget? trailing, bool winner = false}) => Container(
@@ -237,10 +238,11 @@ class _MatchCard extends StatelessWidget {
     final mine = m.seats.any((s) => s.playerId == myPlayerId);
     final canOpen = mine && m.isOpen && m.matchId != null && onOpen != null;
     final (stateText, stateColor) = _state();
-    // Not drawn yet: round 1 has open places; later rounds wait for the winners of their feeder matches.
+    // Places without a player yet: later rounds wait for the winners of their feeder matches;
+    // in round 1 the places after the players who joined so far are still open.
     final placeholders = m.feeders.isNotEmpty
-        ? [for (final f in m.feeders) 'Winner of R${m.roundNo - 1} M$f']
-        : List.filled(m.slots, preview ? 'Open slot' : 'TBD');
+        ? (m.seats.isNotEmpty ? <String>[] : [for (final f in m.feeders) 'Winner of R${m.roundNo - 1} M$f'])
+        : List.filled(max(0, m.slots - m.seats.length), preview ? 'Open slot' : 'TBD');
 
     return GestureDetector(
       onTap: canOpen ? () => onOpen!(m.matchId!) : null,
@@ -262,14 +264,13 @@ class _MatchCard extends StatelessWidget {
               Text(stateText, style: TextStyle(color: stateColor, fontWeight: FontWeight.w800, fontSize: 11)),
             ]),
           ),
-          if (m.seats.isNotEmpty)
-            for (final s in m.seats) _seatRow(m, s)
-          else
-            for (final text in placeholders)
-              _row(
-                dot: null,
-                text: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppColors.textMuted, fontSize: 12, fontStyle: FontStyle.italic)),
-              ),
+          // the players first, then the places still waiting for one
+          for (final s in m.seats) _seatRow(m, s),
+          for (final text in placeholders)
+            _row(
+              dot: null,
+              text: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppColors.textMuted, fontSize: 12, fontStyle: FontStyle.italic)),
+            ),
         ]),
       ),
     );

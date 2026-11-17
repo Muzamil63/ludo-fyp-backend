@@ -138,7 +138,6 @@ class _GameScreenState extends State<GameScreen> {
     final seatNo = d['seat_no'] as int;
     final value = d['dice_value'] as int;
     final valid = List<int>.from(d['valid_token_ids'] as List);
-    final triesLeft = (d['tries_left'] as int?) ?? 0; // "3 tries at home": all tokens in base → roll again
     final mine = _mySeat != null && seatNo == _mySeat!.seatNo;
     if (!_rolling) {
       _rollStart = DateTime.now();
@@ -156,17 +155,13 @@ class _GameScreenState extends State<GameScreen> {
         _dice = value;
         _lastRolls[seatNo] = value;
         if (!stillThisTurn) return;
-        // Missed: the dice is free again, and the turn passes (current seat unknown until "game:turn") unless it's a retry
-        _match!.diceValue = valid.isEmpty ? null : value;
-        if (valid.isEmpty && triesLeft == 0) _match!.currentSeat = null;
+        // No valid move = the turn is already passing on the server (one roll per turn; current seat unknown until "game:turn")
+        final passing = valid.isEmpty;
+        _match!.diceValue = passing ? null : value;
+        if (passing) _match!.currentSeat = null;
         if (mine) _movable = valid;
       });
-      if (mine && valid.isEmpty) {
-        showToast('You rolled $value',
-            message: triesLeft > 0
-                ? 'No token can leave the base — roll again ($triesLeft ${triesLeft == 1 ? 'try' : 'tries'} left)'
-                : 'No token can move — turn passes');
-      }
+      if (mine && valid.isEmpty) showToast('You rolled $value', message: 'No token can move — turn passes');
     });
   }
 

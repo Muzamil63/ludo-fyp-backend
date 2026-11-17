@@ -1,9 +1,10 @@
-// Checks the bracket + custom-rule helpers, and that the full bracket tree builds (64-player preview and a
-// running tournament with upcoming rounds).
+// Checks the bracket + custom-rule helpers, and that the full bracket tree builds (64-player preview, a preview
+// with some players joined, and a running tournament with upcoming rounds).
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludo_arena/models.dart';
 import 'package:ludo_arena/utils/bracket.dart';
+import 'package:ludo_arena/utils/format.dart';
 import 'package:ludo_arena/utils/rule_text.dart';
 import 'package:ludo_arena/widgets/bracket_tree.dart';
 
@@ -51,7 +52,7 @@ void main() {
   test('rule summary and rule choice body', () {
     expect(ruleSummary(classicRules), '6 to start · 4 home · 30s turns');
     final custom = {...classicRules, 'six_to_unlock': 0, 'capture_enabled': 0, 'extra_turn_on_six': 0, 'tries_when_all_home': 5, 'six_boost_after': 0};
-    expect(ruleSummary(custom), '1 or 6 to start · 4 home · 30s turns · no capture · no extra turn on 6 · 5 tries at home · fair dice');
+    expect(ruleSummary(custom), '1 or 6 to start · 4 home · 30s turns · no capture · no extra turn on 6 · 6 by try 5 · fair dice');
     expect(const RuleChoice.preset(2).toJson(), {'rule_set_id': 2});
     expect(RuleChoice.custom(custom).toJson(), {'custom_rules': custom});
     final rs = RuleSet.fromJson({'rule_set_id': 9, 'name': 'Custom', ...custom, 'is_custom': 1});
@@ -103,5 +104,18 @@ void main() {
     expect(find.text('Winner of R1 M1'), findsOneWidget);
     await tester.tap(find.text('You'));
     expect(opened, [2]); // my live match opens the game
+  });
+
+  testWidgets('preview: players who joined so far, then open slots and planned times', (tester) async {
+    final json = previewRounds(4);
+    final m1 = json[0]['matches'][0] as Map<String, dynamic>;
+    m1['seats'] = [seat(1, 10, 'red', 'Ali')]; // 1 of 2 places taken
+    const planned = '2026-11-16T10:20:00Z';
+    json[1]['matches'][0] = {...json[1]['matches'][0] as Map<String, dynamic>, 'scheduled_at': planned}; // the final's planned time
+    await tester.pumpWidget(MaterialApp(home: Scaffold(body: BracketTree(rounds: json.map(TournamentRound.fromJson).toList(), preview: true))));
+    expect(find.text('Ali'), findsOneWidget);
+    expect(find.text('Open slot'), findsNWidgets(3)); // 1 left in M1 + 2 in M2
+    expect(find.text(formatTime(DateTime.parse(planned).toLocal())), findsOneWidget);
+    expect(find.text('Upcoming'), findsNWidgets(2)); // the round-1 matches have no time here
   });
 }

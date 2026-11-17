@@ -53,17 +53,13 @@ async function lockById(matchId, conn) {
   return rows[0] || null;
 }
 
-// Sets whose turn it is and the dice. A new turn or a usable dice also clears the missed tries.
+// Sets whose turn it is and the dice (NULL = that seat must roll).
 async function updateTurn(matchId, currentSeat, diceValue, conn = pool) {
-  await conn.query('UPDATE matches SET current_seat = ?, dice_value = ?, tries_used = 0 WHERE match_id = ?', [
+  await conn.query('UPDATE matches SET current_seat = ?, dice_value = ? WHERE match_id = ?', [
     currentSeat, diceValue, matchId,
   ]);
 }
 
-// "3 tries at home": the seat missed, but rolls again in the same turn.
-async function addMissedTry(matchId, conn = pool) {
-  await conn.query('UPDATE matches SET tries_used = tries_used + 1 WHERE match_id = ?', [matchId]);
-}
 
 async function startMatchRow(matchId, firstSeat, conn = pool) {
   await conn.query(
@@ -165,7 +161,6 @@ module.exports = {
   findById,
   lockById,
   updateTurn,
-  addMissedTry,
   startMatchRow,
   finishMatchRow,
   setStatus,

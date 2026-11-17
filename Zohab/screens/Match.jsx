@@ -1,13 +1,15 @@
 'use client'
 
 // One match: the room lobby, the tournament lobby, the game board and the result.
-// Every socket event just reloads the match state from the server, so the screen always matches the DB.
-import { useEffect, useLayoutEffect, useState } from 'react'
+// Every socket event reloads the match state from the server, so the screen always matches the DB
+// (a few fields are also changed at once, so the dice and the tokens can't be clicked twice).
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { api, emit, listen } from '@/lib/api'
 import Board from '@/components/Board'
 import InviteSheet from '@/components/InviteSheet'
 import { Avatar, Btn, Chips, Dialog, Dice, Header, Spinner } from '@/components/ui'
 import { formatClock, formatCountdown, LUDO, useGo, useNow, useSession } from '@/lib/lib'
+import { ruleSummary } from '@/lib/rules'
 
 const SEATS = { 2: [1, 3], 3: [1, 2, 3], 4: [1, 2, 3, 4] }
 const SEAT_COLOR = { 1: 'red', 2: 'green', 3: 'yellow', 4: 'blue' }
@@ -58,9 +60,12 @@ function Match({ id }) {
   const go = useGo()
   const registered = user.player_type === 'registered'
   const [data, setData] = useState(null) // { match, seats, tokens, turn_deadline }
-  const [lastRoll, setLastRoll] = useState(null) // last game:rolled event + a counter n
+  // Last game:rolled event + a counter n (every roll tumbles the dice) + current: still this turn's roll?
+  const [lastRoll, setLastRoll] = useState(null)
   const [rolls, setRolls] = useState({}) // last dice value of every seat
   const [rolling, setRolling] = useState(false)
+  const rollingRef = useRef(false) // a roll is waiting for the server (stops a fast double click)
+  const movingRef = useRef(false) // a move is waiting for the server (stops a fast double click)
   const [present, setPresent] = useState([])
   const [moves, setMoves] = useState(null)
   const [friends, setFriends] = useState([])
@@ -83,21 +88,53 @@ function Match({ id }) {
       request.then((d) => n === latest && setData(d)).catch((err) => setError(err.message))
     }
     const refresh = () => show(api(`/matches/${id}`))
+    // Changes a few fields of the shown match at once; the full state from the server follows right after.
+    const patch = (fields) => setData((d) => d && { ...d, match: { ...d.match, ...fields } })
+    // A new turn, a move or a full state: the last roll stays on the dice, but it is no longer "this turn's
+    // roll" (the app's turnSeq idea), so an old roll can never come back as the current one.
+    const rollIsOld = () => setLastRoll((r) => r && { ...r, current: false })
+    // A full state (reconnect, match:state): forget a roll / move still waiting for its answer.
+    // An answer lost when the connection dropped would otherwise keep the dice spinning for ever.
+    const fullState = () => {
+      rollingRef.current = false
+      movingRef.current = false
+      setRolling(false)
+      rollIsOld()
+    }
     const join = () => show(emit('match:join', { match_id: id }))
     const forThisMatch = (fn) => (e) => e.match_id === id && fn(e)
 
     join()
     if (registered) api('/friends').then(setFriends).catch(() => {})
     return listen({
-      connect: join, // socket reconnected → join the match room again
-      'match:state': forThisMatch(refresh),
-      'game:turn': forThisMatch(refresh),
-      'game:rolled': forThisMatch((e) => {
-        setLastRoll((prev) => ({ ...e, n: (prev?.n || 0) + 1 }))
-        setRolls((prev) => ({ ...prev, [e.seat_no]: e.dice_value }))
+      // socket reconnected → join the match room again and take its full state
+      connect: () => {
+        fullState()
+        join()
+      },
+      'match:state': forThisMatch(() => {
+        fullState()
         refresh()
       }),
-      'game:moved': forThisMatch(refresh),
+      'game:turn': forThisMatch((e) => {
+        rollIsOld()
+        patch({ current_seat: e.seat_no, dice_value: null })
+        refresh()
+      }),
+      'game:rolled': forThisMatch((e) => {
+        setLastRoll((prev) => ({ ...e, n: (prev?.n || 0) + 1, current: true }))
+        setRolls((prev) => ({ ...prev, [e.seat_no]: e.dice_value }))
+        // No valid move: the turn is already passing on the server (no current seat until game:turn).
+        // Otherwise the dice waits for a move, so it can't be rolled twice.
+        const missed = e.valid_token_ids.length === 0
+        patch(missed ? { dice_value: null, current_seat: null } : { dice_value: e.dice_value })
+        refresh()
+      }),
+      'game:moved': forThisMatch(() => {
+        rollIsOld()
+        patch({ dice_value: null }) // the dice is used up: no glowing tokens until the next roll
+        refresh()
+      }),
       'match:finished': forThisMatch(refresh),
       'match:cancelled': forThisMatch(refresh),
       'room:updated': forThisMatch(refresh),
@@ -116,12 +153,30 @@ function Match({ id }) {
     request.then(() => setMessage(okText)).catch((err) => setMessage(err.message))
   }
 
+  // The server sends game:rolled / game:moved before it answers, so by the time the ref is free again
+  // the dice and the glowing tokens are already switched off (see patch above).
   function roll() {
+    if (rollingRef.current) return // a fast double click must not send two rolls
+    rollingRef.current = true
     setMessage('')
     setRolling(true)
     emit('game:roll', { match_id: id })
       .catch((err) => setMessage(err.message))
-      .finally(() => setRolling(false))
+      .finally(() => {
+        rollingRef.current = false
+        setRolling(false)
+      })
+  }
+
+  function move(tokenId) {
+    if (movingRef.current) return // a fast double click must not send two moves
+    movingRef.current = true
+    setMessage('')
+    emit('game:move', { match_id: id, token_id: tokenId })
+      .catch((err) => setMessage(err.message))
+      .finally(() => {
+        movingRef.current = false
+      })
   }
 
   if (!data) {
@@ -197,6 +252,7 @@ function Match({ id }) {
           <div className="glass hl-gold code-card">
             <div className="code-label">ROOM CODE</div>
             <div className="room-code">{match.room_code}</div>
+            {rules && <div className="rules-line">{ruleSummary(rules)}</div>}
             <Btn v="ghost" size="sm" icon={copied ? 'check' : 'copy'} onClick={copy}>
               {copied ? 'Copied!' : 'Copy code'}
             </Btn>
@@ -334,14 +390,21 @@ function Match({ id }) {
   const validIds = myTurn && match.dice_value ? movableTokens(tokens, me.seat_no, match.dice_value, rules) : []
   const secondsLeft = data.turn_deadline ? Math.min(rules.turn_seconds, Math.max(0, Math.ceil((data.turn_deadline - now) / 1000))) : null
   const timer = secondsLeft !== null ? secondsLeft / rules.turn_seconds : null
-  const turnRoll = lastRoll && lastRoll.seat_no === match.current_seat ? lastRoll : null
+  const turnRoll = lastRoll?.current ? lastRoll : null // the roll made in this turn (see rollIsOld)
+  // This turn's roll, else the dice the server is waiting on (e.g. after a reconnect), else the last roll.
+  const diceValue = turnRoll?.dice_value ?? match.dice_value ?? lastRoll?.dice_value ?? 6
   const ranking = [...seats].sort((a, b) => (a.finish_position || 9) - (b.finish_position || 9))
   const won = me?.finish_position === 1
   const title = { bot: 'vs Computer', online: 'Online Match', room: `Room ${match.room_code}`, tournament: `Round ${match.round_no} · Match ${match.match_no}` }[match.match_type] || 'Match'
 
   let status = ''
   if (current) status = `${current.display_name} ${current.bot_id ? 'is thinking…' : 'is playing…'}`
-  if (turnRoll && turnRoll.valid_token_ids.length === 0) status = `${current?.display_name} rolled ${turnRoll.dice_value} — no move`
+  // A roll with no valid move of THIS turn: shown until the next turn starts (the turn passes after it).
+  if (turnRoll && turnRoll.valid_token_ids.length === 0) {
+    const roller = seats.find((s) => s.seat_no === turnRoll.seat_no)
+    const who = roller?.player_id === user.player_id ? 'You' : roller?.display_name
+    status = `${who} rolled ${turnRoll.dice_value} — no move`
+  }
   if (myTurn) status = match.dice_value ? (validIds.length ? 'Tap a glowing token to move it' : `You rolled ${match.dice_value} — no move`) : 'Your turn — tap the dice to roll'
 
   const panel = (corner, right = false) => {
@@ -366,7 +429,7 @@ function Match({ id }) {
           me={myColor}
           active={match.status === 'in_progress' ? current?.color : null}
           validIds={validIds}
-          onMove={(tokenId) => act(emit('game:move', { match_id: id, token_id: tokenId }))}
+          onMove={move}
         />
       </div>
       {finished ? (
@@ -385,7 +448,7 @@ function Match({ id }) {
         {panel('bl')}
         <div className="dice-slot">
           <Dice
-            value={lastRoll?.dice_value ?? match.dice_value ?? 6}
+            value={diceValue}
             glow={current ? LUDO[current.color].main : '#FFC93C'}
             rollKey={lastRoll?.n || 0}
             spinning={rolling}

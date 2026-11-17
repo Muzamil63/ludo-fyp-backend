@@ -56,7 +56,7 @@ class _CustomRulesScreenState extends State<CustomRulesScreen> {
                 _rule('Extra turn when a token gets home', 'extra_turn_on_home', _onOff),
               ]),
               _section('Dice help', [
-                _rule('Tries for a 6 while all tokens are in base', 'tries_when_all_home', [for (final n in [1, 3, 5]) Option('$n', n)]),
+                _rule('A 6 is guaranteed by try (while all tokens are in base)', 'tries_when_all_home', [for (final n in [3, 4, 5]) Option('$n', n), const Option('Off', 0)]),
                 // On = the server's bad-luck protection after 6 rolls without a 6; Off = completely fair dice
                 OptionPicker<int>(
                   label: 'Lucky-6 help (no very long waits for a 6)',

@@ -58,7 +58,7 @@ export default function BracketScreen({ navigation, route }: Props) {
       <AppHeader title="Bracket" subtitle={subtitle} />
       <View style={styles.legend}>
         <Text style={styles.legendText}>
-          {preview ? 'Round 1 is drawn when the tournament starts. ' : ''}Winners move right → 👑 champion.{' '}
+          {preview ? 'Players who joined so far are shown — the final random draw is at the start. ' : ''}Times are the planned schedule. Winners move right → 👑 champion.{' '}
           <Text style={styles.gold}>Gold</Text> = your matches.
         </Text>
       </View>

@@ -172,7 +172,7 @@ Realtime:  Mobile app ◀─Socket.IO─▶ sockets/ ─▶ game/gameManager ─
 | 3 | REGISTERED_USER | `registered_users` | player_id (PK+FK), username, email, password_hash, games_played, games_won |
 | 4 | FRIENDSHIP | `friendships` | requester_id, addressee_id, status |
 | 5 | RULE_SET | `rule_sets` | six_to_unlock, extra_turn_on_six/capture/home, capture_enabled, tokens_to_win, turn_seconds, tries_when_all_home, six_boost_after, is_custom |
-| 6 | MATCH | `matches` | rule_set_id, match_type, game_mode, max_players, status, current_seat, dice_value, tries_used |
+| 6 | MATCH | `matches` | rule_set_id, match_type, game_mode, max_players, status, current_seat, dice_value |
 | 7 | BOT_MATCH | `bot_matches` | match_id (PK+FK), difficulty |
 | 8 | ONLINE_MATCH | `online_matches` | match_id (PK+FK), queue_key |
 | 9 | ROOM_MATCH | `room_matches` | match_id (PK+FK), host_id, room_code |
@@ -183,7 +183,7 @@ Realtime:  Mobile app ◀─Socket.IO─▶ sockets/ ─▶ game/gameManager ─
 | 14 | TOKEN | `tokens` | match_player_id, token_no (1–4), position |
 | 15 | MOVE | `moves` | match_player_id, token_id, captured_token_id, dice_value, from/to_position, is_auto |
 | 16 | ROOM_INVITATION | `room_invitations` | match_id, sender_id, receiver_id, status, expires_at |
-| 17 | TOURNAMENT | `tournaments` | **creator_id**, **rule_set_id**, name, description, max_participants, players_per_match, start_time, round_break_minutes, status, current_round |
+| 17 | TOURNAMENT | `tournaments` | **creator_id**, **rule_set_id**, name, description, max_participants, players_per_match, start_time, round_break_minutes (= minutes per round, fixed schedule), status, current_round |
 | 18 | TOURNAMENT_PARTICIPANT | `tournament_participants` | tournament_id, player_id, status (active/eliminated/champion), eliminated_round |
 | 19 | TOURNAMENT_INVITATION | `tournament_invitations` | tournament_id, sender_id, receiver_id, status (pending/accepted/declined/expired) |
 
@@ -211,7 +211,7 @@ The main track has **52 cells**. Global cell = `(START_OFFSET[color] + position)
 0. **Dice with bad-luck protection** (`ludoEngine.rollDiceValue`): a fair dice (crypto), but after `six_boost_after` (6) rolls in a row without a 6, a 6 becomes 1 in 3 until that seat rolls one. Same for every seat, counted in `match_players.rolls_since_six`, 0 = always fair. Effect: 6s go from 16.7% to about 20% of rolls, and waits of more than 15 rolls for a 6 drop from 6.6% to under 1%.
 1. **Unlock:** a token leaves base to position 0 on a 6, or on a 1 or 6 when `six_to_unlock = 0`.
 2. **Exact roll home:** a move is invalid if `position + dice > 56`.
-3. **No valid move:** the turn passes automatically, except for **3 tries at home**: while none of a seat's tokens is on the board (all in base or already home), a roll that cannot move gives another try, up to `tries_when_all_home` rolls per turn (3; 1 turns the rule off). `matches.tries_used` counts the missed rolls of the current turn. When the server plays a turn (bot or timeout), it uses the remaining tries straight away.
+3. **One roll per turn.** If no token can move, the turn passes to the next player straight away. **Stuck in base:** while none of a seat's tokens is on the board, the dice guarantees a 6 by the `tries_when_all_home`-th roll at the latest (4 for Classic), counted over that seat's own turns with `match_players.rolls_since_six` (0 turns the guarantee off). Code: `ludoEngine.stuckInBase` + `rollDiceValue`.
 4. **Capture** (only when `capture_enabled`): a token lands on a main-track cell (0–50) that isn't a safe cell and holds **exactly one** opponent token, so that token goes back to -1. If two or more tokens share a cell, they form a safe group and nothing is captured. Teammates are never captured. A move captures at most one token, which matches the ERD (each move has 0 or 1 captured token).
 5. **Extra turn:** on a six, a capture, or a token reaching home. Each one has its own rule-set flag.
 6. **Seat finished:** when the number of tokens at 56 is at least `tokens_to_win` (4 for Classic, fewer for quick modes).
@@ -262,7 +262,7 @@ Not implemented on purpose (possible future work): three sixes in a row = lost t
 | GET | `/tournaments?status=` | Public | list (with creator_username, rule_set_name, participant_count) |
 | GET | `/tournaments/mine` | Reg | tournaments I created or joined (`is_creator`, `my_status`) |
 | GET | `/tournaments/my-matches` | Reg | my waiting / running tournament matches with `scheduled_at` |
-| GET | `/tournaments/:tournament_id` | Public | details + `rule_set` (full values) + participants + the **full bracket**: `rounds` from round 1 to the final (matches not drawn yet have `status: "upcoming"` and `feeders`), `total_rounds`, `preview` (true before the start: the tree for a full tournament) + champion |
+| GET | `/tournaments/:tournament_id` | Public | details + `rule_set` (full values) + participants + the **full bracket**: `rounds` from round 1 to the final (matches not drawn yet have `status: "upcoming"`, `feeders` and their planned `scheduled_at`), `total_rounds`, `preview` (true before the start: the tree for a full tournament, round 1 filled with the players who joined so far) + champion |
 | POST | `/tournaments` | Reg | create `{ name, description?, rule_set_id OR custom_rules, max_participants (2–64), players_per_match, start_time, round_break_minutes, join? }` |
 | PUT | `/tournaments/:tournament_id` | Creator | edit any field (only before the start) |
 | POST | `/tournaments/:tournament_id/start` | Creator | start now (at least 2 players), otherwise it starts by itself at start_time |
@@ -284,7 +284,7 @@ Not implemented on purpose (possible future work): three sixes in a row = lost t
    - at `scheduled_at`,
    - or early when all its players are in the lobby (`match:join`),
    - or when the creator presses "start match now".
-5. **After each round:** when all its matches end, losers are eliminated and the next round is scheduled `round_break_minutes` later. The last winner is the champion (`tournaments_won + 1`).
+5. **After each round:** when all its matches end, losers are eliminated and the next round is drawn. **Fixed schedule:** round r is planned (r−1) × `round_break_minutes` after round 1, so every match has a time from the start; if a round finishes late, the next one starts 1 minute later instead. The last winner is the champion (`tournaments_won + 1`).
 6. **No-show players:** their turns are auto-played by the turn timer, so the bracket always finishes.
 
 Status codes: 200 ok · 201 created · 400 bad input · 401 missing/bad token · 403 not allowed (guest on a Reg route, not the host) · 404 not found · 409 conflict (duplicate, full, already started, not your turn).
@@ -313,7 +313,7 @@ On connect, the server puts the socket in room `player:<player_id>` for personal
 |-------|---------|---------|
 | `match:state` | `match:<id>` | `{ match, seats, tokens, turn_deadline }` |
 | `game:turn` | `match:<id>` | `{ seat_no, deadline }` |
-| `game:rolled` | `match:<id>` | `{ seat_no, dice_value, valid_token_ids, tries_left }` (empty list = turn passes, unless `tries_left > 0`: the same seat rolls again) |
+| `game:rolled` | `match:<id>` | `{ seat_no, dice_value, valid_token_ids }` (empty list = turn passes) |
 | `game:moved` | `match:<id>` | `{ seat_no, token_id, from_position, to_position, captured_token_id, extra_turn, is_auto }` |
 | `match:finished` | `match:<id>` | `{ match_id, rankings: [{ seat_no, player_id, bot_id, finish_position }] }` |
 | `room:updated` | `match:<id>` | `{ match_id, status, seats }` |
@@ -385,7 +385,7 @@ On connect, the server puts the socket in room `player:<player_id>` for personal
 | "Change the default rules of every game" | `UPDATE rule_sets ... WHERE name = 'Classic'` (+ `seed.sql`) — the apps start every game on Classic, players change rules per game with **Customise** |
 | "Turn off capturing" / "no extra turn on six" | flip the flag in the `rule_sets` row |
 | "Make the dice completely fair" / "6s even less rare" | `UPDATE rule_sets SET six_boost_after = 0` (fair) or a smaller number like 4 — no code |
-| "Only 1 try for a 6 at the start" / "give 5 tries" | `UPDATE rule_sets SET tries_when_all_home = 1` (or 5) — no code |
+| "Guarantee the first 6 sooner / later" | `UPDATE rule_sets SET tries_when_all_home = 3` (or 5; 0 = no guarantee) — no code |
 | "Add a rule: three sixes = lose the turn" | `ALTER TABLE rule_sets ADD three_sixes_forfeit ...` + add a `six_count` column to `matches` + check it in `gameManager.rollDice` |
 | "Change the safe cells" | `SAFE_CELLS` in `game/constants.js` |
 | "Make the bot smarter / dumber" | weights in `scoreMove()` in `game/botAI.js` |
@@ -398,6 +398,7 @@ On connect, the server puts the socket in room `player:<player_id>` for personal
 | "Allow 128-player tournaments" | `TOURNAMENT_SIZES` in `game/constants.js` (64 is the current maximum) |
 | "Let custom rules have a 90 s timer" | `CUSTOM_RULE_LIMITS` in `utils/ruleInput.js` |
 | "How is the bracket decided?" | `game/bracket.js`: round 1 random, then neighbours meet; `bracketShape(64, 2)` = 32/16/8/4/2/1 matches |
+| "Rounds every 20 minutes" | the creator picks "Time for each round" (`round_break_minutes`) — no code |
 | "Give players 2 minutes in the lobby" | `TOURNAMENT_LOBBY_SECONDS` in `game/constants.js` |
 | "Start a tournament match later" | the creator calls `PUT .../matches/:match_id/schedule` (no code) |
 | "Who can invite to a tournament?" | `tournamentJoinController.invite` (creator or a participant, friends only) |

@@ -112,48 +112,34 @@ async function resumeRunningMatches() {
   for (const matchId of await matchModel.listRunningIds()) await ensureTimer(matchId);
 }
 
-// Server rolls the dice. If no token can move, the turn passes, unless the seat still has a try left
-// ("3 tries at home": all its tokens are in base). isAuto = called by autoPlay.
-async function rollDice(matchId, seatNo, isAuto = false) {
+// Server rolls the dice: one roll per turn. If no token can move, the turn passes to the next player.
+async function rollDice(matchId, seatNo) {
   const result = await withTransaction(async (conn) => {
     const { match, rules, seats, tokens } = await loadLocked(conn, matchId);
     checkTurn(match, seatNo);
     if (match.dice_value !== null) throw httpError(409, 'Already rolled, move a token');
 
     const seat = seats.find((s) => s.seat_no === seatNo);
-    const dice = engine.rollDiceValue(seat.rolls_since_six, rules, crypto.randomInt); // 1..6
-    await matchModel.setRollsSinceSix(seat.match_player_id, dice === 6 ? 0 : Math.min(seat.rolls_since_six + 1, 100), conn);
     const seatTokens = seatTokensOf(tokens, seatNo);
+    const dice = engine.rollDiceValue(seat.rolls_since_six, rules, crypto.randomInt, engine.stuckInBase(seatTokens)); // 1..6
+    await matchModel.setRollsSinceSix(seat.match_player_id, dice === 6 ? 0 : Math.min(seat.rolls_since_six + 1, 100), conn);
     const moves = engine.getValidMoves(seatTokens, dice, rules);
-    let triesLeft = 0;
     if (moves.length > 0) {
       await matchModel.updateTurn(matchId, seatNo, dice, conn); // remember the dice until the move
     } else {
-      triesLeft = engine.triesLeftAfterMiss(seatTokens, match.tries_used, rules);
-      if (triesLeft > 0) {
-        await matchModel.addMissedTry(matchId, conn); // same seat rolls again
-      } else {
-        const next = engine.getNextSeat(seatNo, activeSeatNos(seats, tokens, rules));
-        await matchModel.updateTurn(matchId, next, null, conn);
-      }
+      const next = engine.getNextSeat(seatNo, activeSeatNos(seats, tokens, rules));
+      await matchModel.updateTurn(matchId, next, null, conn);
     }
-    return { dice_value: dice, moves, tries_left: triesLeft };
+    return { dice_value: dice, moves };
   });
 
   const validTokenIds = result.moves.map((m) => m.token_id);
-  emitToMatch(matchId, 'game:rolled', {
-    seat_no: seatNo,
-    dice_value: result.dice_value,
-    valid_token_ids: validTokenIds,
-    tries_left: result.tries_left,
-  });
+  emitToMatch(matchId, 'game:rolled', { seat_no: seatNo, dice_value: result.dice_value, valid_token_ids: validTokenIds });
 
-  // No move: after a short pause the next turn starts (the same seat again when it has a try left).
-  // autoPlay uses its remaining tries itself, so it needs no timer for them.
-  if (result.moves.length === 0 && !(isAuto && result.tries_left > 0)) {
-    setMatchTimer(matchId, C.NO_MOVE_DELAY_MS, null, () => startTurn(matchId));
+  if (result.moves.length === 0) {
+    setMatchTimer(matchId, C.NO_MOVE_DELAY_MS, null, () => startTurn(matchId)); // show the dice, then the next turn
   }
-  return { dice_value: result.dice_value, valid_token_ids: validTokenIds, moves: result.moves, tries_left: result.tries_left };
+  return { dice_value: result.dice_value, valid_token_ids: validTokenIds, moves: result.moves };
 }
 
 // Moves one token with the rolled dice: capture, save the move, check for a winner, pick the next turn.
@@ -285,12 +271,7 @@ async function autoPlay(matchId, seatNo) {
 
   let validMoves;
   if (match.dice_value === null) {
-    let rolled = await rollDice(matchId, seatNo, true);
-    // All tokens still in base with tries left: use them now, a moment apart (no new timer per try)
-    while (rolled.moves.length === 0 && rolled.tries_left > 0) {
-      await sleep(C.NO_MOVE_DELAY_MS);
-      rolled = await rollDice(matchId, seatNo, true);
-    }
+    const rolled = await rollDice(matchId, seatNo);
     if (rolled.moves.length === 0) return; // turn already passed
     validMoves = rolled.moves;
     if (isBot) await sleep(C.BOT_DELAY_MS); // let players see the bot's dice

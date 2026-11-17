@@ -36,7 +36,7 @@ async function readFields(body, current = {}) {
   const max_participants = oneOf(Number(body.max_participants ?? current.max_participants ?? 8), C.TOURNAMENT_SIZES, 'max_participants');
   const players_per_match = oneOf(Number(body.players_per_match ?? current.players_per_match ?? 4), C.TOURNAMENT_MATCH_SIZES, 'players_per_match');
 
-  const round_break_minutes = Number(body.round_break_minutes ?? current.round_break_minutes ?? 2);
+  const round_break_minutes = Number(body.round_break_minutes ?? current.round_break_minutes ?? 10); // minutes per round (fixed schedule)
   if (!Number.isInteger(round_break_minutes) || round_break_minutes < 1 || round_break_minutes > 60) {
     throw httpError(400, 'round_break_minutes must be a whole number from 1 to 60');
   }
@@ -113,9 +113,17 @@ async function getOne(req, res) {
   // number of players (nobody can leave once it has started).
   const preview = tournament.status === 'registration';
   const playerCount = preview ? tournament.max_participants : participants.length;
+  const shape = bracket.bracketShape(playerCount, tournament.players_per_match);
+  // Fixed schedule: round 1 starts after the 1-minute lobby (or at its drawn time), then one round every
+  // round_break_minutes. Before the start, round 1 shows who has joined so far.
+  const roundOne = created.filter((m) => m.round_no === 1).map((m) => new Date(m.scheduled_at).getTime());
+  const firstRoundAt = roundOne.length ? Math.min(...roundOne) : new Date(tournament.start_time).getTime() + C.TOURNAMENT_LOBBY_SECONDS * 1000;
   const rounds = tournament.status === 'cancelled' && created.length === 0
     ? []
-    : bracket.buildBracketView(bracket.bracketShape(playerCount, tournament.players_per_match), created);
+    : bracket.buildBracketView(shape, created, {
+      times: bracket.roundTimes(firstRoundAt, tournament.round_break_minutes, shape.length),
+      previewPlayers: preview ? participants : null,
+    });
   const champion = participants.find((p) => p.status === 'champion') || null;
   const rule_set = await ruleSetModel.findById(tournament.rule_set_id); // full rule values (custom or preset)
 

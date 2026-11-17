@@ -1,21 +1,69 @@
 'use client'
 
-// One tournament: my next match, info, join / leave / invite, the creator's controls, players and the bracket.
-import { useEffect, useLayoutEffect, useState } from 'react'
+// One tournament: my next match, info, join / leave / invite, the creator's controls, the bracket map,
+// the schedule of every round, the drawn matches and the players.
+import { Fragment, useEffect, useLayoutEffect, useState } from 'react'
 import { api, listen } from '@/lib/api'
 import InviteSheet from '@/components/InviteSheet'
+import TournamentMatches from '@/components/TournamentMatches'
 import { Avatar, Btn, Header, Icon, Pill, Spinner } from '@/components/ui'
-import { formatCountdown, formatWhen, LUDO, useGo, useNow, useSession } from '@/lib/lib'
+import { formatCountdown, formatWhen, roundName, useGo, useNow, useSession } from '@/lib/lib'
+import { ruleSummary } from '@/lib/rules'
 import { TournamentForm } from './Tournaments'
+
+// When a round is played: done, live, its planned time, or "right after" the round before
+// (when the planned time has passed but the round is not drawn yet, because the round before ran late).
+function roundWhen(round, now) {
+  const first = round.matches[0]
+  if (round.matches.every((m) => m.status === 'finished')) return 'Done ✓'
+  if (round.matches.some((m) => m.status === 'in_progress')) return 'Live now'
+  if (!first.match_id && round.round_no > 1 && first.scheduled_at && new Date(first.scheduled_at) < now) return `Right after round ${round.round_no - 1}`
+  return first.scheduled_at ? formatWhen(first.scheduled_at) : '—'
+}
+
+// The whole tree in numbers, with a button to the full bracket map.
+function BracketMapCard({ data, live, onOpen }) {
+  const { tournament: t, participants, rounds, total_rounds, preview } = data
+  const matchCount = rounds.reduce((n, r) => n + r.matches.length, 0)
+  return (
+    <div className={`glass mt12${live ? ' hl-gold' : ''}`}>
+      <b className="card-head">🗺️ Bracket map</b>
+      <div className="dim mt4 mb10">
+        {preview ? `Preview for ${t.max_participants} players` : `${participants.length} players`} · {total_rounds} round{total_rounds === 1 ? '' : 's'} · {matchCount}{' '}
+        match{matchCount === 1 ? '' : 'es'}
+      </div>
+      <Btn v="gold" size="md" icon="network" onClick={onOpen}>
+        Open full bracket
+      </Btn>
+    </div>
+  )
+}
+
+// Every round with its fixed time (round r starts (r - 1) × "time per round" after round 1).
+function ScheduleCard({ rounds, totalRounds, now }) {
+  return (
+    <div className="glass mt12">
+      <b className="card-head">🗓️ Schedule</b>
+      <div className="gap8" />
+      {rounds.map((r) => (
+        <div key={r.round_no} className="info-row">
+          <span>
+            {roundName(r.round_no, totalRounds)} · {r.matches.length} match{r.matches.length === 1 ? '' : 'es'}
+          </span>
+          <b>{roundWhen(r, now)}</b>
+        </div>
+      ))}
+    </div>
+  )
+}
 
 function Tournament({ id }) {
   const { user } = useSession()
   const go = useGo()
   const registered = user.player_type === 'registered'
   const now = useNow()
-  const [data, setData] = useState(null) // { tournament, participants, rounds, champion }
+  const [data, setData] = useState(null) // { tournament, rule_set, participants, rounds, total_rounds, preview, champion }
   const [friends, setFriends] = useState([])
-  const [times, setTimes] = useState({}) // new start times typed by the creator, per match
   const [editing, setEditing] = useState(false)
   const [inviting, setInviting] = useState(false)
 
@@ -58,7 +106,7 @@ function Tournament({ id }) {
     )
   }
 
-  const { tournament: t, participants, rounds, champion } = data
+  const { tournament: t, rule_set, participants, rounds, total_rounds, champion } = data
   const isCreator = t.creator_id === user.player_id
   const joined = participants.some((p) => p.player_id === user.player_id)
   const open = t.status === 'registration'
@@ -66,15 +114,20 @@ function Tournament({ id }) {
   const freeFriends = friends.filter((f) => !participants.some((p) => p.player_id === f.player_id))
   const startsIn = new Date(t.start_time) - now
 
+  // `rounds` is the FULL bracket: matches not drawn yet have no match_id. Only the drawn ones can be
+  // played or controlled here (the bracket map shows the rest).
+  const drawn = rounds.map((r) => ({ ...r, matches: r.matches.filter((m) => m.match_id !== null) })).filter((r) => r.matches.length > 0)
+
   // My match that is waiting or being played.
-  const myMatch = rounds
-    .flatMap((r) => r.matches.map((m) => ({ ...m, round_no: r.round_no })))
+  const myMatch = drawn
+    .flatMap((r) => r.matches)
     .find((m) => (m.status === 'waiting' || m.status === 'in_progress') && m.seats.some((s) => s.player_id === user.player_id))
 
   if (editing) {
     return (
       <TournamentForm
         tournament={t}
+        ruleSet={rule_set}
         onSaved={() => {
           setEditing(false)
           reload()
@@ -84,14 +137,15 @@ function Tournament({ id }) {
     )
   }
 
+  // [label, value, note under the row]
   const info = [
     ['Format', `${t.players_per_match === 2 ? '1 vs 1' : '4 players'} knockout`],
-    ['Rules', t.rule_set_name],
+    ['Rules', t.rule_set_name, rule_set && ruleSummary(rule_set)],
     ['Players', `${t.participant_count} / ${t.max_participants}`],
     ['Starts', formatWhen(t.start_time)],
     open && startsIn > 0 && ['Countdown', formatCountdown(startsIn)],
-    live && ['Round', `Round ${t.current_round}`],
-    ['Break between rounds', `${t.round_break_minutes} min`],
+    live && ['Round', roundName(t.current_round, total_rounds)],
+    ['Time per round', `${t.round_break_minutes} min`],
   ].filter(Boolean)
 
   return (
@@ -129,11 +183,14 @@ function Tournament({ id }) {
 
         <div className="glass">
           {t.description && <div className="desc">{t.description}</div>}
-          {info.map(([label, value]) => (
-            <div key={label} className="info-row">
-              <span>{label}</span>
-              <b>{value}</b>
-            </div>
+          {info.map(([label, value, note]) => (
+            <Fragment key={label}>
+              <div className="info-row">
+                <span>{label}</span>
+                <b>{value}</b>
+              </div>
+              {note && <div className="rules-line">{note}</div>}
+            </Fragment>
           ))}
         </div>
 
@@ -183,6 +240,21 @@ function Tournament({ id }) {
           </div>
         )}
 
+        {/* the whole tree (round 1 → final) is on its own page; here: its size and every round's time */}
+        {rounds.length > 0 && (
+          <>
+            <BracketMapCard data={data} live={live} onOpen={() => go(`/tournaments/${id}/bracket`)} />
+            <ScheduleCard rounds={rounds} totalRounds={total_rounds} now={now} />
+          </>
+        )}
+
+        <div className="sec">Matches</div>
+        {drawn.length === 0 ? (
+          <p className="dim">{open ? 'Matches are drawn when the tournament starts.' : 'No matches were played.'}</p>
+        ) : (
+          <TournamentMatches tournamentId={id} rounds={drawn} totalRounds={total_rounds} myId={user.player_id} isCreator={isCreator} act={act} />
+        )}
+
         <div className="sec">Players ({participants.length})</div>
         {participants.length === 0 && <p className="dim">No players yet</p>}
         {participants.map((p) => {
@@ -215,78 +287,6 @@ function Tournament({ id }) {
             </div>
           )
         })}
-
-        <div className="sec">Bracket</div>
-        {rounds.length === 0 && <p className="dim">Matches are drawn when the tournament starts.</p>}
-        {rounds.length > 0 && (
-          <div className="bracket">
-            {rounds.map((round, ri) => (
-              <div key={round.round_no} className="bcol">
-                <h4>{ri === rounds.length - 1 && round.matches.length === 1 ? 'Final' : `Round ${round.round_no}`}</h4>
-                {round.matches.map((m) => {
-                  const mine = m.seats.some((s) => s.player_id === user.player_id)
-                  const done = m.status === 'finished'
-                  return (
-                    <div key={m.match_id} className={`glass bmatch${m.status === 'in_progress' ? ' hl-gold' : ''}`}>
-                      <div className="row">
-                        <b className="grow">Match {m.match_no}</b>
-                        <Pill status={m.status} />
-                      </div>
-                      {m.scheduled_at && (
-                        <div className="small row when">
-                          <Icon name="clock" size={13} />
-                          {formatWhen(m.scheduled_at)}
-                        </div>
-                      )}
-                      {m.seats.map((s) => {
-                        const winner = m.winner_id === s.player_id
-                        return (
-                          <div key={s.seat_no} className={`bseat${winner ? ' win' : done ? ' lost' : ''}`}>
-                            <i className="cd" style={{ background: LUDO[s.color].main }} />
-                            <span className={`grow${s.player_id === user.player_id ? ' gold-text' : ''}`}>
-                              {s.player_id === user.player_id ? 'You' : s.display_name}
-                            </span>
-                            {winner && <Icon name="crown" size={16} color="var(--gold)" />}
-                          </div>
-                        )
-                      })}
-                      {mine && m.status !== 'cancelled' && (
-                        <Btn v={done ? 'ghost' : 'gold'} size="sm" icon={done ? 'chevronRight' : 'play'} className="mt8" onClick={() => go(`/match/${m.match_id}`)}>
-                          {done ? 'View' : 'Play now'}
-                        </Btn>
-                      )}
-                      {isCreator && m.status === 'waiting' && (
-                        <div className="creator-match">
-                          <span className="input sm">
-                            <input
-                              type="datetime-local"
-                              value={times[m.match_id] || ''}
-                              onChange={(e) => setTimes({ ...times, [m.match_id]: e.target.value })}
-                              aria-label={`New time for match ${m.match_no}`}
-                            />
-                          </span>
-                          <div className="btn-row">
-                            <Btn
-                              v="ghost"
-                              size="sm"
-                              disabled={!times[m.match_id]}
-                              onClick={() => act(api(`/tournaments/${id}/matches/${m.match_id}/schedule`, 'PUT', { scheduled_at: times[m.match_id] }), 'Time changed')}
-                            >
-                              Set time
-                            </Btn>
-                            <Btn v="success" size="sm" onClick={() => act(api(`/tournaments/${id}/matches/${m.match_id}/start`, 'POST'))}>
-                              Start
-                            </Btn>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            ))}
-          </div>
-        )}
       </div>
       {inviting && (
         <InviteSheet

@@ -23,7 +23,7 @@ import { useNow } from '../../hooks/useNow';
 import { pickDateTime } from '../../utils/pickDateTime';
 import { formatCountdown, formatDateTime } from '../../utils/format';
 import { ruleSummary } from '../../utils/ruleText';
-import { drawnRounds, type DrawnMatch } from '../../utils/bracket';
+import { drawnRounds, roundName, type DrawnMatch } from '../../utils/bracket';
 import { colors } from '../../theme';
 import type { RootStackParamList } from '../../navigation/types';
 import type { TournamentDetail } from '../../types';
@@ -151,7 +151,7 @@ export default function TournamentDetailScreen({ navigation, route }: Props) {
           <InfoRow label="Players" value={`${participants.length} / ${t.max_participants}`} />
           <InfoRow label={t.status === 'registration' ? 'Starts' : 'Started'} value={formatDateTime(t.start_time)} />
           {t.status === 'registration' && <InfoRow label="Countdown" value={startsIn > 0 ? formatCountdown(startsIn) : 'Starting…'} />}
-          <InfoRow label="Break between rounds" value={`${t.round_break_minutes} min`} />
+          <InfoRow label="Time per round" value={`${t.round_break_minutes} min`} />
           {t.status === 'in_progress' && <InfoRow label="Current round" value={String(t.current_round)} />}
         </GlassCard>
 
@@ -202,6 +202,22 @@ export default function TournamentDetailScreen({ navigation, route }: Props) {
                 : `${participants.length} players · ${total_rounds} rounds · ${matchCount} matches`}
             </Text>
             <GameButton title="Open full bracket" icon={Network} variant="gold" size="md" onPress={() => navigation.navigate('Bracket', { tournamentId: t.tournament_id })} />
+          </GlassCard>
+        )}
+
+        {/* schedule: every round with its fixed time */}
+        {data.rounds.length > 0 && (
+          <GlassCard style={styles.mapCard}>
+            <Text style={styles.mapTitle}>🗓️ Schedule</Text>
+            {data.rounds.map((r) => {
+              const first = r.matches[0];
+              const when =
+                r.matches.every((m) => m.status === 'finished') ? 'Done ✓'
+                : r.matches.some((m) => m.status === 'in_progress') ? 'Live now'
+                : !first.match_id && first.scheduled_at && new Date(first.scheduled_at).getTime() < now ? `Right after round ${r.round_no - 1}`
+                : first.scheduled_at ? formatDateTime(first.scheduled_at) : '—';
+              return <InfoRow key={r.round_no} label={`${roundName(r.round_no, total_rounds)} · ${r.matches.length} match${r.matches.length > 1 ? 'es' : ''}`} value={when} />;
+            })}
           </GlassCard>
         )}
 

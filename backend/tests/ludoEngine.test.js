@@ -6,7 +6,7 @@ const botAI = require('../src/game/botAI');
 
 const CLASSIC = {
   six_to_unlock: 1, extra_turn_on_six: 1, extra_turn_on_capture: 1, extra_turn_on_home: 1,
-  capture_enabled: 1, tokens_to_win: 4, tries_when_all_home: 3, six_boost_after: 6,
+  capture_enabled: 1, tokens_to_win: 4, tries_when_all_home: 4, six_boost_after: 6,
 };
 const QUICK = { ...CLASSIC, six_to_unlock: 0, tokens_to_win: 1 };
 
@@ -149,20 +149,18 @@ test('bot (easy) always returns one of the valid moves', () => {
   for (let i = 0; i < 20; i++) assert.ok(moves.includes(botAI.chooseMove(moves, { seat_no: 1, color: 'red' }, [], 'easy')));
 });
 
-test('3 tries at home: all tokens in base -> 2 more tries, then 1, then the turn passes', () => {
-  const base = [tok(1, 'red', -1), tok(1, 'red', -1), tok(1, 'red', -1), tok(1, 'red', -1)];
-  assert.equal(engine.triesLeftAfterMiss(base, 0, CLASSIC), 2);
-  assert.equal(engine.triesLeftAfterMiss(base, 1, CLASSIC), 1);
-  assert.equal(engine.triesLeftAfterMiss(base, 2, CLASSIC), 0);
+test('stuck in base: true only while no token is on the board', () => {
+  assert.equal(engine.stuckInBase([tok(1, 'red', -1), tok(1, 'red', -1)]), true);
+  assert.equal(engine.stuckInBase([tok(1, 'red', 56), tok(1, 'red', -1)]), true); // finished tokens are not on the board
+  assert.equal(engine.stuckInBase([tok(1, 'red', 5), tok(1, 'red', -1)]), false);
 });
 
-test('3 tries at home: no extra try with a token on the board, or when the rule is off', () => {
-  const oneOut = [tok(1, 'red', 5), tok(1, 'red', -1), tok(1, 'red', -1), tok(1, 'red', -1)];
-  assert.equal(engine.triesLeftAfterMiss(oneOut, 0, CLASSIC), 0);
-  const homeAndBase = [tok(1, 'red', 56), tok(1, 'red', -1)]; // finished tokens are not on the board
-  assert.equal(engine.triesLeftAfterMiss(homeAndBase, 0, CLASSIC), 2);
-  const base = [tok(1, 'red', -1)];
-  assert.equal(engine.triesLeftAfterMiss(base, 0, { ...CLASSIC, tries_when_all_home: 1 }), 0);
+test('stuck in base: a 6 is guaranteed by the 4th try (counted over turns), not before', () => {
+  const one = () => 1; // a fake dice that always gives 1
+  assert.equal(engine.rollDiceValue(3, CLASSIC, one, true), 6); // 3 rolls without a 6 already: the 4th is a 6
+  assert.equal(engine.rollDiceValue(2, CLASSIC, one, true), 1); // only the 3rd try: normal dice
+  assert.equal(engine.rollDiceValue(5, CLASSIC, one, false), 1); // a token on the board: no guarantee
+  assert.equal(engine.rollDiceValue(9, { ...CLASSIC, tries_when_all_home: 0, six_boost_after: 0 }, () => 2, true), 2); // 0 = off
 });
 
 test('dice: fair 1..6 before the bad-luck limit', () => {

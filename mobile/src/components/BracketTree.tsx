@@ -179,15 +179,16 @@ function MatchCard({
       ? { text: '● LIVE', color: colors.danger }
       : m.status === 'finished'
       ? { text: 'Done', color: colors.textMuted }
-      : m.status === 'waiting' && m.scheduled_at
-      ? { text: formatTime(m.scheduled_at), color: colors.info }
       : m.status === 'cancelled'
       ? { text: 'Cancelled', color: colors.textMuted }
-      : { text: preview ? '' : 'Upcoming', color: colors.textMuted };
-  // Not drawn yet: round 1 has open places; later rounds wait for the winners of their feeder matches.
+      : m.scheduled_at // drawn match (blue) or the planned time of the fixed schedule (grey)
+      ? { text: formatTime(m.scheduled_at), color: m.status === 'waiting' ? colors.info : colors.textMuted }
+      : { text: 'Upcoming', color: colors.textMuted };
+  // Places without a player yet: later rounds wait for the winners of their feeder matches;
+  // in round 1 the places after the players who joined so far are still open.
   const placeholders = m.feeders.length
-    ? m.feeders.map(f => `Winner of R${m.round_no - 1} M${f}`)
-    : Array.from({ length: m.slots }, () => (preview ? 'Open slot' : 'TBD'));
+    ? m.seats.length ? [] : m.feeders.map(f => `Winner of R${m.round_no - 1} M${f}`)
+    : Array.from({ length: m.slots - m.seats.length }, () => (preview ? 'Open slot' : 'TBD'));
 
   return (
     <Pressable
@@ -204,8 +205,7 @@ function MatchCard({
         <Text style={styles.matchNo}>M{m.match_no}</Text>
         <Text style={[styles.state, { color: state.color }]}>{state.text}</Text>
       </View>
-      {m.seats.length > 0
-        ? m.seats.map(s => {
+      {m.seats.map(s => {
             const winner = m.winner_id !== null && s.player_id === m.winner_id;
             const lost = m.status === 'finished' && !winner;
             return (
@@ -229,15 +229,15 @@ function MatchCard({
                 {winner && <Crown color={colors.gold} size={13} />}
               </View>
             );
-          })
-        : placeholders.map((text, k) => (
-            <View key={k} style={styles.seat}>
-              <View style={[styles.dot, styles.dotEmpty]} />
-              <Text numberOfLines={1} style={styles.placeholder}>
-                {text}
-              </Text>
-            </View>
-          ))}
+          })}
+      {placeholders.map((text, k) => (
+        <View key={`open-${k}`} style={styles.seat}>
+          <View style={[styles.dot, styles.dotEmpty]} />
+          <Text numberOfLines={1} style={styles.placeholder}>
+            {text}
+          </Text>
+        </View>
+      ))}
     </Pressable>
   );
 }

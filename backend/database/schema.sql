@@ -58,7 +58,7 @@ CREATE TABLE rule_sets (
   capture_enabled        TINYINT(1) NOT NULL DEFAULT 1,
   tokens_to_win          TINYINT NOT NULL DEFAULT 4,      -- tokens that must reach home to finish
   turn_seconds           TINYINT NOT NULL DEFAULT 30,
-  tries_when_all_home    TINYINT NOT NULL DEFAULT 3,      -- rolls per turn while all your tokens are in base (1 = only one)
+  tries_when_all_home    TINYINT NOT NULL DEFAULT 4,      -- stuck in base: a 6 is guaranteed by this try (one roll per turn; 0 = off)
   six_boost_after        TINYINT NOT NULL DEFAULT 6,      -- after this many rolls in a row without a 6, a 6 is 1 in 3 (0 = always fair)
   is_custom              TINYINT(1) NOT NULL DEFAULT 0    -- 1 = made by a player for one game / tournament (hidden from the preset list)
 ) ENGINE=InnoDB;
@@ -81,7 +81,6 @@ CREATE TABLE matches (
   status        ENUM('waiting','in_progress','finished','cancelled') NOT NULL DEFAULT 'waiting',
   current_seat  TINYINT NULL,     -- seat_no whose turn it is
   dice_value    TINYINT NULL,     -- rolled but not used yet; NULL = current seat must roll
-  tries_used    TINYINT NOT NULL DEFAULT 0,  -- missed rolls this turn ("3 tries at home", see rule_sets)
   created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   started_at    DATETIME NULL,
   ended_at      DATETIME NULL,
@@ -122,7 +121,7 @@ CREATE TABLE tournaments (
   max_participants     TINYINT NOT NULL DEFAULT 8,          -- 2, 4, 8, 16, 32 or 64
   players_per_match    TINYINT NOT NULL DEFAULT 4,          -- 2 = 1v1 knockout, 4 = 4-player matches
   start_time           DATETIME NOT NULL,                   -- registration closes, round 1 is drawn
-  round_break_minutes  TINYINT NOT NULL DEFAULT 2,          -- wait before the next round's matches start
+  round_break_minutes  TINYINT NOT NULL DEFAULT 10,         -- minutes per round: fixed schedule, round r starts (r-1) × this after round 1
   status               ENUM('registration','in_progress','finished','cancelled') NOT NULL DEFAULT 'registration',
   current_round        TINYINT NOT NULL DEFAULT 0,          -- 0 = not started yet
   created_at           DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

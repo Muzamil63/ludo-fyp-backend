@@ -115,6 +115,11 @@ Order of work: **backend first** (with tests), then the **React Native** app, th
 
 ---
 
+## 3b. Follow-up (2026-11-17): who plays whom + complete schedule + invites
+- **Live preview names:** before the start, round 1 of the tree shows the players who joined so far (join order, "not final"); the random draw still happens at the start.
+- **Fixed round times:** `round_break_minutes` now means *minutes per round*. Round r is planned (r−1) × minutes after round 1, every match shows its time from the beginning, and the tournament page has a **Schedule** card. A round that would start before the previous one ends starts 1 minute after it instead; lobby early start still works.
+- **Invite friends in the New Tournament form:** pick friends with chips; invitations are sent when the tournament is created (the Invite Friends button stays).
+
 ## 4. Not in this change (possible future work)
 - Custom rules in online matchmaking (a separate queue per rule set).
 - Seeding by ranking instead of a random round-1 draw.

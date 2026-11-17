@@ -10,7 +10,7 @@ export const CLASSIC_RULES: CustomRules = {
   capture_enabled: 1,
   tokens_to_win: 4,
   turn_seconds: 30,
-  tries_when_all_home: 3,
+  tries_when_all_home: 4,
   six_boost_after: 6,
 };
 
@@ -24,7 +24,7 @@ export function rulesOf(r: CustomRules): CustomRules {
     capture_enabled: r.capture_enabled,
     tokens_to_win: r.tokens_to_win,
     turn_seconds: r.turn_seconds,
-    tries_when_all_home: r.tries_when_all_home ?? 3,
+    tries_when_all_home: r.tries_when_all_home ?? 4,
     six_boost_after: r.six_boost_after ?? 6,
   };
 }
@@ -39,7 +39,8 @@ export function ruleSummary(r: CustomRules): string {
   if (!r.capture_enabled) parts.push('no capture');
   const noExtra = [!r.extra_turn_on_six && '6', !r.extra_turn_on_capture && 'capture', !r.extra_turn_on_home && 'home'].filter(Boolean);
   if (noExtra.length) parts.push(`no extra turn on ${noExtra.join('/')}`);
-  if ((r.tries_when_all_home ?? 3) !== 3) parts.push(`${r.tries_when_all_home} tries at home`);
+  const sixBy = r.tries_when_all_home ?? 4; // a 6 is guaranteed by this try while stuck in base (Classic = 4)
+  if (sixBy !== 4) parts.push(sixBy === 0 ? 'no 6 guarantee' : `6 by try ${sixBy}`);
   if (!r.six_boost_after) parts.push('fair dice');
   return parts.join(' · ');
 }

@@ -374,6 +374,7 @@ button.glass:active { transform: scale(0.985); }
 .code-card { text-align: center; padding: 12px; }
 .code-label { color: var(--dim); font-weight: 800; letter-spacing: 3px; font-size: 11.5px; }
 .room-code { color: var(--gold); font-size: 38px; font-weight: 900; letter-spacing: 8px; margin: 4px 0 6px; padding-left: 8px; }
+.code-card .rules-line { color: var(--dim); text-align: center; margin: 0 0 10px; }
 .seats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .seat { border-radius: 22px; border: 2px solid; padding: 12px 8px; text-align: center; background: rgba(255, 255, 255, 0.05); display: flex; flex-direction: column; align-items: center; min-width: 0; animation: pop-in 0.3s ease-out; }
 .seat .nm { font-weight: 800; font-size: 13.5px; margin-top: 7px; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -506,6 +507,79 @@ button.glass:active { transform: scale(0.985); }
 .bmatch > .btn { margin-top: 8px; }
 .creator-match { margin-top: 8px; display: grid; gap: 6px; }
 .creator-match .btn { flex: 1; }
+.card-head { display: block; color: var(--gold); font-size: 16px; font-weight: 900; }
+.rules-line { color: var(--muted); font-size: 12px; line-height: 1.4; margin: -2px 0 6px; }
+/* friends to invite when a tournament is created (toggle pills) */
+.friend-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.friend-pill {
+  border-radius: 99px; padding: 8px 14px; border: 1.5px solid rgba(255, 255, 255, 0.12); background: rgba(255, 255, 255, 0.07);
+  color: var(--dim); font-weight: 700; font-size: 13.5px; transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+.friend-pill:hover:not(.on) { background: rgba(255, 255, 255, 0.12); color: #fff; }
+.friend-pill.on { border-color: var(--gold); background: rgba(255, 201, 60, 0.16); color: var(--gold); }
+
+/* ===== Rules card + Custom rules page ===== */
+.rule-card {
+  width: 100%; display: flex; align-items: center; gap: 10px; padding: 14px; margin-bottom: 16px; text-align: left; color: inherit;
+  border-radius: 16px; border: 1.5px solid rgba(255, 255, 255, 0.12); background: rgba(255, 255, 255, 0.07);
+  transition: background-color 0.15s, border-color 0.15s;
+}
+.rule-card:hover { background: rgba(255, 255, 255, 0.11); }
+.rule-card b { display: block; font-size: 15px; font-weight: 900; }
+.rule-card .rule-sum { display: block; color: var(--dim); font-size: 12px; line-height: 1.4; margin-top: 4px; }
+.rule-card.custom { border-color: var(--gold); background: rgba(255, 201, 60, 0.1); }
+.rule-card.custom b { color: var(--gold); }
+.rule-edit { display: flex; align-items: center; gap: 4px; flex: none; color: var(--gold); font-weight: 800; font-size: 13.5px; }
+/* a full-screen page drawn over the current screen (inside the phone), with its own header */
+.full-panel {
+  position: absolute; inset: 0; z-index: 4; display: flex; flex-direction: column; padding-top: 8px;
+  background: linear-gradient(180deg, #23185e 0%, #121a4a 48%, #0b1026 100%); animation: page-in 0.22s ease-out;
+}
+@media (max-width: 520px) { .full-panel { padding-top: env(safe-area-inset-top); } }
+.rules-sec { color: var(--gold); font-size: 16px; font-weight: 900; margin-bottom: 14px; }
+.rules-summary { text-align: center; margin: 18px 0; }
+.rules-summary .lbl { margin: 0; }
+.rules-summary b { display: block; color: var(--gold); font-size: 14px; font-weight: 800; line-height: 1.45; margin-top: 6px; }
+
+/* ===== Bracket map (the whole tree, round 1 → final) ===== */
+.bracket-legend { padding: 0 16px 2px; color: var(--dim); font-size: 12.5px; line-height: 1.45; flex: none; }
+.btree-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.btree-chips { display: flex; gap: 8px; overflow-x: auto; padding: 8px 16px; flex: none; scrollbar-width: none; }
+.round-chip {
+  flex: none; border-radius: 99px; padding: 6px 12px; border: 1.5px solid var(--gold); background: rgba(255, 255, 255, 0.07);
+  color: var(--gold); font-weight: 800; font-size: 12px; transition: background-color 0.15s;
+}
+.round-chip:hover { background: rgba(255, 201, 60, 0.16); }
+/* scrolls both ways: every card has an exact place (left / top) inside .btree */
+.btree-scroll {
+  flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain;
+  scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+.btree { position: relative; }
+.btree-lines { position: absolute; left: 0; top: 0; pointer-events: none; }
+.btree-lines path { fill: none; stroke: rgba(255, 255, 255, 0.16); stroke-width: 2; }
+.btree-lines path.done { stroke: var(--gold); }
+.btree-round { position: absolute; width: 172px; height: 36px; text-align: center; color: var(--gold); font-size: 14px; font-weight: 900; }
+.bcard {
+  position: absolute; display: block; width: 172px; padding: 5px 9px 0; text-align: left; color: inherit;
+  border-radius: 12px; background: #1b2354; border: 1.5px solid rgba(255, 255, 255, 0.12);
+}
+button.bcard { cursor: pointer; transition: filter 0.15s; }
+button.bcard:hover { filter: brightness(1.15); }
+.bcard.mine { border: 2px solid var(--gold); }
+.bcard.live { border-color: var(--danger); }
+.bcard-top { height: 22px; display: flex; align-items: center; justify-content: space-between; }
+.bcard-top b { color: var(--dim); font-size: 12px; font-weight: 900; }
+.bcard-top span { font-size: 11px; font-weight: 800; }
+.bcard-seat { height: 22px; display: flex; align-items: center; gap: 6px; padding: 0 4px; border-radius: 6px; }
+.bcard-seat.win { background: rgba(255, 201, 60, 0.18); }
+.bcard-seat .cd { width: 8px; height: 8px; }
+.bcard-seat .cd.open { border: 1px solid var(--muted); background: none; }
+.bcard-seat .nm, .bcard-seat .ph { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bcard-seat .nm { font-size: 12.5px; font-weight: 700; }
+.bcard-seat .nm.lost { color: var(--muted); text-decoration: line-through; }
+.bcard-seat .nm.me { color: var(--gold); }
+.bcard-seat .ph { color: var(--muted); font-size: 12px; font-style: italic; }
 
 /* ===== Profile & leaderboard ===== */
 .profile-av { display: flex; justify-content: center; }

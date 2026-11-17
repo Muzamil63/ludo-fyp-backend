@@ -57,3 +57,17 @@ test('view: future matches are "upcoming" and list the matches that feed them', 
   assert.deepEqual(view[1].matches[1].feeders, [3, 4]);
   assert.deepEqual(view[2].matches[0].feeders, [1, 2]);    // final = winners of the two semi-finals
 });
+
+test('preview: joined players fill round 1 in join order, the rest stays open', () => {
+  const players = [{ player_id: 1, display_name: 'Ali' }, { player_id: 2, display_name: 'Sara' }, { player_id: 3, display_name: 'Zain' }];
+  const seats = bracket.previewSeats([2, 2, 2, 2], players); // an 8-player 1v1 tournament
+  assert.deepEqual(seats.map((s) => s.map((x) => x.display_name)), [['Ali', 'Sara'], ['Zain'], [], []]);
+  assert.deepEqual(seats[0].map((x) => x.color), ['red', 'yellow']); // 2-player matches use seats 1 + 3
+});
+
+test('schedule: every round has a fixed time, roundMinutes apart', () => {
+  const times = bracket.roundTimes('2026-12-01T18:00:00Z', 10, 3);
+  assert.deepEqual(times.map((t) => t.toISOString()), ['2026-12-01T18:00:00.000Z', '2026-12-01T18:10:00.000Z', '2026-12-01T18:20:00.000Z']);
+  const view = bracket.buildBracketView(bracket.bracketShape(8, 2), [], { times });
+  assert.equal(view[2].matches[0].scheduled_at.toISOString(), '2026-12-01T18:20:00.000Z'); // the final
+});

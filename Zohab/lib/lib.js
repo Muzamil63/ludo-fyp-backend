@@ -1,4 +1,5 @@
-// Shared helpers: Ludo colours, the logged-in session, navigation, time formatting, small hooks.
+// Shared helpers: Ludo colours, the logged-in session, the notification, navigation, round names,
+// time formatting, small hooks.
 import { useRouter } from 'next/navigation'
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import { api } from './api'
@@ -18,6 +19,10 @@ export const OverlayContext = createContext(null)
 export const SessionContext = createContext(null)
 export const useSession = () => useContext(SessionContext)
 
+// Shows the in-app notification: toast({ emoji, title, text, label, action }). Provided by AppShell.
+export const ToastContext = createContext(() => {})
+export const useToast = () => useContext(ToastContext)
+
 // go('/tournaments') — client-side navigation.
 export function useGo() {
   const router = useRouter()
@@ -34,7 +39,7 @@ export function useNow(ms = 1000) {
   return now
 }
 
-// Rule sets (Classic, Quick, Demo) are loaded once and shared by every form.
+// The preset rule sets (Classic, Quick, Demo) are loaded once and shared by every Rules card.
 let ruleSetsCache = null
 export function useRuleSets() {
   const [list, setList] = useState(ruleSetsCache || [])
@@ -50,8 +55,14 @@ export function useRuleSets() {
   return list
 }
 
-// Rule sets as chip options: [id, name, "4 home · 30s"]
-export const ruleOptions = (rules) => rules.map((r) => [r.rule_set_id, r.name, `${r.tokens_to_win} home · ${r.turn_seconds}s`])
+// Name of a tournament round: "Final", "Semi-finals", "Quarter-finals", or "Round 2" for earlier rounds.
+export function roundName(roundNo, totalRounds) {
+  const fromEnd = totalRounds - roundNo
+  if (fromEnd === 0) return 'Final'
+  if (fromEnd === 1) return 'Semi-finals'
+  if (fromEnd === 2) return 'Quarter-finals'
+  return `Round ${roundNo}`
+}
 
 const clock = (d) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 

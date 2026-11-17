@@ -71,7 +71,10 @@ class _BracketScreenState extends State<BracketScreen> {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
             child: Text.rich(
               TextSpan(style: const TextStyle(color: AppColors.textDim, fontSize: 12.5, height: 1.4), children: [
-                TextSpan(text: '${data.preview ? 'Round 1 is drawn when the tournament starts. ' : ''}Winners move right → 👑 champion. '),
+                TextSpan(
+                  text: '${data.preview ? 'Players who joined so far are shown — the final random draw is at the start. ' : ''}'
+                      'Times are the planned schedule. Winners move right → 👑 champion. ',
+                ),
                 const TextSpan(text: 'Gold', style: TextStyle(color: AppColors.gold, fontWeight: FontWeight.w800)),
                 const TextSpan(text: ' = your matches. Pinch to zoom out.'),
               ]),

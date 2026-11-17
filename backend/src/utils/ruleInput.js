@@ -12,7 +12,7 @@ const CUSTOM_RULE_LIMITS = {
   capture_enabled: { min: 0, max: 1, classic: 1 },
   tokens_to_win: { min: 1, max: 4, classic: 4 },
   turn_seconds: { min: 10, max: 60, classic: 30 },
-  tries_when_all_home: { min: 1, max: 5, classic: 3 },
+  tries_when_all_home: { min: 0, max: 6, classic: 4 },  // a 6 by this try while stuck in base (0 = off)
   six_boost_after: { min: 0, max: 10, classic: 6 },      // 0 = always a fair dice
 };
 

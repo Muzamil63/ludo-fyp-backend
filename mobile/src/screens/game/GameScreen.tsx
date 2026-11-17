@@ -125,7 +125,7 @@ export default function GameScreen({ navigation, route }: Props) {
     if (mySeat && d.seat_no === mySeat.seat_no) Vibration.vibrate(40);
   });
 
-  useSocketEvent('game:rolled', (d: { match_id: number; seat_no: number; dice_value: number; valid_token_ids: number[]; tries_left?: number }) => {
+  useSocketEvent('game:rolled', (d: { match_id: number; seat_no: number; dice_value: number; valid_token_ids: number[] }) => {
     if (!forThisMatch(d)) return;
     const mine = !!mySeat && d.seat_no === mySeat.seat_no;
     if (!rollingRef.current) {
@@ -141,18 +141,13 @@ export default function GameScreen({ navigation, route }: Props) {
       setRolling(false);
       setDice(d.dice_value);
       setLastRolls((r) => ({ ...r, [d.seat_no]: d.dice_value }));
-      const missed = d.valid_token_ids.length === 0;
-      const triesLeft = d.tries_left ?? 0; // "3 tries at home": all tokens in base → the same player rolls again
-      if (mine && missed) {
-        showToast('info', `You rolled ${d.dice_value}`, triesLeft > 0
-          ? `No token can leave the base — roll again (${triesLeft} ${triesLeft === 1 ? 'try' : 'tries'} left)`
-          : 'No token can move — turn passes');
-      }
+      // No valid move = the turn is already passing on the server (one roll per turn)
+      const passing = d.valid_token_ids.length === 0;
+      if (mine && passing) showToast('info', `You rolled ${d.dice_value}`, 'No token can move — turn passes');
       // The server already moved on during the animation (auto-play, or the turn passed): keep the newer state
       if (turnSeq.current !== seq) return;
-      // Missed: the dice is free again, and the turn passes (current_seat null until "game:turn") unless it's a retry
-      const passing = missed && triesLeft === 0;
-      setState((s) => s && { ...s, match: { ...s.match, dice_value: missed ? null : d.dice_value, current_seat: passing ? null : s.match.current_seat } });
+      // current_seat stays null until "game:turn" names the next player
+      setState((s) => s && { ...s, match: { ...s.match, dice_value: passing ? null : d.dice_value, current_seat: passing ? null : s.match.current_seat } });
       if (mine) setMovable(d.valid_token_ids);
     }, wait);
   });

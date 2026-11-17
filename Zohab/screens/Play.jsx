@@ -3,16 +3,18 @@
 // Starting a game: vs Computer setup, create a room, join a room by code, and online matchmaking.
 import { useEffect, useState } from 'react'
 import { api, emit, listen } from '@/lib/api'
+import RulePicker from '@/components/RulePicker'
 import { Btn, Chips, Header, Pawn } from '@/components/ui'
-import { ruleOptions, useGo, useNow, useRuleSets, useSession } from '@/lib/lib'
+import { useGo, useNow, useSession } from '@/lib/lib'
+import { CLASSIC_ID } from '@/lib/rules'
 
 const PLAYERS = [[2, '2'], [3, '3'], [4, '4']]
 const MODES = [['ffa', 'Free for all'], ['2v2', '2 vs 2']]
 
 export function BotSetup() {
   const go = useGo()
-  const rules = useRuleSets()
-  const [f, setF] = useState({ total_players: 4, game_mode: 'ffa', difficulty: 'easy', rule_set_id: 1 })
+  const [f, setF] = useState({ total_players: 4, game_mode: 'ffa', difficulty: 'easy' })
+  const [rules, setRules] = useState({ rule_set_id: CLASSIC_ID }) // Classic until "Customise"
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const set = (field) => (value) => setF({ ...f, [field]: value })
@@ -20,7 +22,8 @@ export function BotSetup() {
   function start() {
     setError('')
     setBusy(true)
-    api('/matches/bot', 'POST', { ...f, game_mode: f.total_players === 4 ? f.game_mode : 'ffa' })
+    // ...rules = { rule_set_id } (a preset) or { custom_rules }
+    api('/matches/bot', 'POST', { ...f, ...rules, game_mode: f.total_players === 4 ? f.game_mode : 'ffa' })
       .then((d) => go(`/match/${d.match_id}`))
       .catch((err) => {
         setError(err.message)
@@ -36,8 +39,8 @@ export function BotSetup() {
           <Chips label="Players" value={f.total_players} options={PLAYERS} onChange={set('total_players')} />
           {f.total_players === 4 && <Chips label="Mode" value={f.game_mode} options={MODES} onChange={set('game_mode')} />}
           <Chips label="Bot difficulty" value={f.difficulty} options={[['easy', '😊 Easy'], ['hard', '😈 Hard']]} onChange={set('difficulty')} />
-          <Chips label="Rules" value={f.rule_set_id} options={ruleOptions(rules)} onChange={set('rule_set_id')} />
-          {rules.some((r) => r.name === 'Demo') && <p className="small tip">Tip: &quot;Demo&quot; rules finish fast — only 1 token needs to reach home.</p>}
+          <RulePicker value={rules} onChange={setRules} />
+          <p className="small tip">Tip: for a quick game, tap Customise and set &quot;Tokens home to win&quot; to 1.</p>
           {error && <p className="error">{error}</p>}
           <Btn v="gold" icon="play" onClick={start} disabled={busy}>
             Start Game
@@ -51,8 +54,8 @@ export function BotSetup() {
 export function CreateRoom() {
   const { user } = useSession()
   const go = useGo()
-  const rules = useRuleSets()
-  const [f, setF] = useState({ max_players: 4, game_mode: 'ffa', rule_set_id: 1 })
+  const [f, setF] = useState({ max_players: 4, game_mode: 'ffa' })
+  const [rules, setRules] = useState({ rule_set_id: CLASSIC_ID }) // Classic until "Customise"
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const set = (field) => (value) => setF({ ...f, [field]: value })
@@ -60,7 +63,7 @@ export function CreateRoom() {
   function create() {
     setError('')
     setBusy(true)
-    api('/rooms', 'POST', { ...f, game_mode: f.max_players === 4 ? f.game_mode : 'ffa' })
+    api('/rooms', 'POST', { ...f, ...rules, game_mode: f.max_players === 4 ? f.game_mode : 'ffa' })
       .then((d) => go(`/match/${d.match_id}`))
       .catch((err) => {
         setError(err.message)
@@ -86,7 +89,7 @@ export function CreateRoom() {
           <div className="glass">
             <Chips label="Seats" value={f.max_players} options={PLAYERS} onChange={set('max_players')} />
             {f.max_players === 4 && <Chips label="Mode" value={f.game_mode} options={MODES} onChange={set('game_mode')} />}
-            <Chips label="Rules" value={f.rule_set_id} options={ruleOptions(rules)} onChange={set('rule_set_id')} />
+            <RulePicker value={rules} onChange={setRules} />
             {error && <p className="error">{error}</p>}
             <Btn v="gold" icon="door" onClick={create} disabled={busy}>
               Create Room

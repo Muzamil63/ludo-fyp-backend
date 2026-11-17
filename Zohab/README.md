@@ -32,12 +32,17 @@ Production: `npm run build` then `npm start` (also on port 3001).
 | URL | Screen |
 |-----|--------|
 | `/` | Home: greeting, invitations bell, next tournament match, Play Online, game modes |
-| `/play/bot` | vs Computer setup |
-| `/play/create-room`, `/play/join` | create a private room, join one by code |
+| `/play/bot` | vs Computer setup (rules: Classic, or **Customise** → the Custom rules page) |
+| `/play/create-room`, `/play/join` | create a private room (same Rules card), join one by code |
 | `/play/queue/[key]` | online matchmaking (`ffa2`, `ffa4`, `2v2`) |
 | `/match/[id]` | room lobby, tournament lobby, the game and the result |
-| `/tournaments`, `/tournaments/new`, `/tournaments/[id]` | tournament list, create form, details + bracket |
+| `/tournaments`, `/tournaments/new`, `/tournaments/[id]` | tournament list, create form (2–64 players, time per round, invite friends), details: rules, bracket map card, schedule of every round, drawn matches |
+| `/tournaments/[id]/bracket` | the full bracket map, round 1 → final (scrolls both ways, up to 64 players) |
 | `/friends`, `/invites`, `/profile`, `/leaderboard` | friends, invitations, profile, top players |
+
+The **Custom rules page** is not a URL: the Rules card opens it as a full-screen panel inside the phone
+(like the bottom sheets), and "Use these rules" hands the rules back to the form. Requests then send
+`{ custom_rules: {...} }`, or `{ rule_set_id: 1 }` when the rules are the same as Classic.
 
 ## Code map
 
@@ -50,9 +55,13 @@ Production: `npm run build` then `npm start` (also on port 3001).
 | `components/ui.jsx` | buttons, inputs, chips, pills, avatar, pawn, logo, dice, bottom sheet, pop-up |
 | `components/Board.jsx` | the 15 × 15 board and the pawns (your colour is always bottom-left) |
 | `components/InviteSheet.jsx`, `components/Icons.jsx` | "Invite friends" sheet, line icons |
+| `components/RulePicker.jsx`, `components/CustomRules.jsx` | the Rules card ("📜 Classic rules" / "⚙️ Custom rules") and the Custom rules page |
+| `components/BracketTree.jsx` | the bracket map: one column per round, cards placed between their feeder matches, SVG lines |
+| `components/TournamentMatches.jsx` | the drawn matches of a tournament, with Play and the creator's time / start controls |
 | `screens/*.jsx` | the screens (same as `src/pages` in the React version) |
 | `lib/api.js` | `api()` for REST calls, the Socket.IO connection, `emit()` and `listen()` |
-| `lib/lib.js` | Ludo colours, session context, `useGo()`, `useNow()`, `useRuleSets()`, time formatting |
+| `lib/lib.js` | Ludo colours, session + toast contexts, `useGo()`, `useNow()`, `useRuleSets()`, `roundName()`, time formatting |
+| `lib/rules.js` | Classic rule values, `ruleSummary()` ("6 to start · 4 home · 30s turns"), `sameRules()` |
 | `app/globals.css` | all styles (same as the React version) |
 
 ## Next.js notes

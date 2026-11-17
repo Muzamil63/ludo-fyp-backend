@@ -147,6 +147,17 @@ async function eliminateRoundLosers(tournamentId, roundNo, conn = pool) {
   );
 }
 
+// Fixed schedule: seconds until a round should start = round 1's time + (roundNo - 1) × minutes per round.
+// Never less than minSeconds, so players always get a short warning (and a late round starts soon).
+async function secondsUntilRound(tournamentId, roundNo, roundMinutes, minSeconds, conn = pool) {
+  const [rows] = await conn.query(
+    `SELECT TIMESTAMPDIFF(SECOND, NOW(), DATE_ADD(MIN(scheduled_at), INTERVAL ? MINUTE)) AS secs
+     FROM tournament_matches WHERE tournament_id = ? AND round_no = 1`,
+    [(roundNo - 1) * roundMinutes, tournamentId]
+  );
+  return Math.max(minSeconds, Number(rows[0].secs ?? 0));
+}
+
 // The winner of each match of a round, in match order (they meet their neighbours in the next round).
 async function listRoundWinners(tournamentId, roundNo, conn = pool) {
   const [rows] = await conn.query(
@@ -252,6 +263,7 @@ module.exports = {
   listMemberIds,
   eliminateRoundLosers,
   listRoundWinners,
+  secondsUntilRound,
   setChampion,
   findMatchSlot,
   listMatches,

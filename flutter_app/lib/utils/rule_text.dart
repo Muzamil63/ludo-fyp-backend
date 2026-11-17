@@ -10,7 +10,7 @@ const CustomRules classicRules = {
   'capture_enabled': 1,
   'tokens_to_win': 4,
   'turn_seconds': 30,
-  'tries_when_all_home': 3,
+  'tries_when_all_home': 4,
   'six_boost_after': 6,
 };
 
@@ -32,7 +32,8 @@ String ruleSummary(CustomRules r) {
     if (r['extra_turn_on_home'] == 0) 'home',
   ];
   if (noExtra.isNotEmpty) parts.add('no extra turn on ${noExtra.join('/')}');
-  if ((r['tries_when_all_home'] ?? 3) != 3) parts.add('${r['tries_when_all_home']} tries at home');
+  final sixBy = r['tries_when_all_home'] ?? 4; // a 6 is guaranteed by this try while stuck in base (Classic = 4)
+  if (sixBy != 4) parts.add(sixBy == 0 ? 'no 6 guarantee' : '6 by try $sixBy');
   if (r['six_boost_after'] == 0) parts.add('fair dice');
   return parts.join(' · ');
 }

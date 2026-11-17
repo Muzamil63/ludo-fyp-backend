@@ -1,5 +1,5 @@
-// One tournament: info, the right buttons for me (join / leave / invite / creator controls), my next match,
-// a link to the full bracket map, the drawn matches, the players and the champion. Refreshes live on "tournament:updated".
+// One tournament: info, my buttons (join / leave / invite / creator controls), my next match, the bracket map link,
+// the round schedule, the drawn matches, the players and the champion. Refreshes live on "tournament:updated".
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../api/endpoints.dart';
@@ -102,6 +102,17 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> with Re
         ]),
       );
 
+  // When a round plays, for the Schedule card. A round not drawn yet whose planned time has passed is
+  // waiting for the round before it to end, so it starts right after that one.
+  String _roundWhen(TournamentRound r) {
+    final first = r.matches.first;
+    if (r.matches.every((m) => m.status == 'finished')) return 'Done ✓';
+    if (r.matches.any((m) => m.status == 'in_progress')) return 'Live now';
+    if (first.scheduledAt == null) return '—';
+    if (first.matchId == null && first.scheduledAt!.isBefore(DateTime.now())) return 'Right after round ${r.roundNo - 1}';
+    return formatDateTime(first.scheduledAt!);
+  }
+
   @override
   Widget build(BuildContext context) {
     final data = _data;
@@ -184,7 +195,7 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> with Re
                     _info('Players', '${data.participants.length} / ${t.maxParticipants}'),
                     _info(t.status == 'registration' ? 'Starts' : 'Started', formatDateTime(t.startTime)),
                     if (t.status == 'registration') _info('Countdown', startsIn.inSeconds > 0 ? formatCountdown(startsIn) : 'Starting…'),
-                    _info('Break between rounds', '${t.roundBreakMinutes} min'),
+                    _info('Time per round', '${t.roundBreakMinutes} min'),
                     if (t.status == 'in_progress') _info('Current round', '${t.currentRound}'),
                   ]),
                 ),
@@ -315,6 +326,18 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> with Re
                         size: ButtonSize.md,
                         onPressed: () => _push(BracketScreen(tournamentId: id)),
                       ),
+                    ]),
+                  ),
+
+                // schedule: every round with its fixed time
+                if (data.rounds.isNotEmpty)
+                  GlassCard(
+                    margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                      const Text('🗓️ Schedule', style: TextStyle(color: AppColors.gold, fontWeight: FontWeight.w900, fontSize: 16)),
+                      const SizedBox(height: 4),
+                      for (final r in data.rounds)
+                        _info('${roundName(r.roundNo, data.totalRounds)} · ${r.matches.length} match${r.matches.length > 1 ? 'es' : ''}', _roundWhen(r)),
                     ]),
                   ),
 

@@ -5,7 +5,7 @@
 import { useRouter } from 'next/navigation'
 import { Suspense, useEffect, useMemo, useState } from 'react'
 import { api, connectSocket, disconnectSocket, getToken, listen } from '@/lib/api'
-import { formatClock, OverlayContext, SessionContext } from '@/lib/lib'
+import { formatClock, OverlayContext, SessionContext, ToastContext } from '@/lib/lib'
 import SignIn from '@/screens/SignIn'
 import { Backdrop, Glows, TabBar, Toast } from './Shell.jsx'
 import { Logo, PawnDefs } from './ui.jsx'
@@ -104,6 +104,18 @@ export default function AppShell({ children }) {
           setToast({ emoji: '⚔️', title: 'Your tournament match has started', text: 'Tap Play to jump in', label: 'Play', action: () => go(`/match/${d.match_id}`) })
         }
       },
+      'tournament:updated': (d) => {
+        // The whole bracket is fixed once the tournament starts: the alert opens the bracket map
+        if (d.reason === 'started') {
+          setToast({
+            emoji: '🏆',
+            title: 'Your tournament has started!',
+            text: 'Round 1 is drawn — see the full bracket',
+            label: 'Bracket',
+            action: () => go(`/tournaments/${d.tournament_id}/bracket`),
+          })
+        }
+      },
     })
   }, [user, router])
 
@@ -116,24 +128,27 @@ export default function AppShell({ children }) {
 
   return (
     <SessionContext.Provider value={session}>
-      <OverlayContext.Provider value={screen}>
-        <PawnDefs />
-        <div className="stage">
-          <Backdrop />
-          <div className="frame">
-            <div className="screen" ref={setScreen}>
-              <Glows />
-              {/* The login is saved in this browser, so the server always sends the splash.
-                  Each page sets `instant = false` for this reason (see app/page.js). */}
-              <main className="content">{loading ? <Splash /> : user ? children : <SignIn onLogin={onLogin} />}</main>
-              <Suspense fallback={null}>
-                <TabBar />
-              </Suspense>
-              {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
+      {/* screens can show the notification too, e.g. "Tournament created! 2 friends invited" */}
+      <ToastContext.Provider value={setToast}>
+        <OverlayContext.Provider value={screen}>
+          <PawnDefs />
+          <div className="stage">
+            <Backdrop />
+            <div className="frame">
+              <div className="screen" ref={setScreen}>
+                <Glows />
+                {/* The login is saved in this browser, so the server always sends the splash.
+                    Each page sets `instant = false` for this reason (see app/page.js). */}
+                <main className="content">{loading ? <Splash /> : user ? children : <SignIn onLogin={onLogin} />}</main>
+                <Suspense fallback={null}>
+                  <TabBar />
+                </Suspense>
+                {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
+              </div>
             </div>
           </div>
-        </div>
-      </OverlayContext.Provider>
+        </OverlayContext.Provider>
+      </ToastContext.Provider>
     </SessionContext.Provider>
   )
 }

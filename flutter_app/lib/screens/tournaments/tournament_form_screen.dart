@@ -1,5 +1,5 @@
 // Create a tournament, or edit it (creator, before it starts): name, rules (preset or custom), size (up to 64),
-// format, start time, breaks.
+// format, start time, time per round, and friends to invite straight away.
 import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../api/api_client.dart';
@@ -29,8 +29,10 @@ class _TournamentFormScreenState extends State<TournamentFormScreen> {
   int _maxPlayers = 4;
   int _perMatch = 2;
   DateTime _startTime = DateTime.now().add(const Duration(minutes: 15));
-  int _breakMinutes = 2;
+  int _breakMinutes = 10; // minutes per round (fixed schedule), saved as round_break_minutes
   bool _join = true;
+  List<Person> _friends = [];
+  final List<int> _invited = []; // friends to invite when the tournament is created
   bool _loaded = false;
   bool _saving = false;
   String? _error;
@@ -42,6 +44,7 @@ class _TournamentFormScreenState extends State<TournamentFormScreen> {
     super.initState();
     if (!_editing) {
       _loaded = true;
+      _loadFriends();
       return;
     }
     // Editing: fill the form with the current values
@@ -69,6 +72,24 @@ class _TournamentFormScreenState extends State<TournamentFormScreen> {
     _name.dispose();
     _description.dispose();
     super.dispose();
+  }
+
+  // Create mode only. If it fails the form still works: friends can be invited later from the tournament.
+  Future<void> _loadFriends() async {
+    try {
+      final friends = await FriendApi.list();
+      if (mounted) setState(() => _friends = friends);
+    } catch (_) {}
+  }
+
+  // Invites one friend; true when it worked. A failed invite must not stop the others.
+  Future<bool> _tryInvite(int tournamentId, int friendId) async {
+    try {
+      await TournamentApi.invite(tournamentId, friendId);
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<void> _chooseTime() async {
@@ -99,7 +120,11 @@ class _TournamentFormScreenState extends State<TournamentFormScreen> {
         if (mounted) Navigator.of(context).pop();
       } else {
         final t = await TournamentApi.create({...body, 'join': _join});
-        showToast('Tournament created!', message: 'Now invite your friends', kind: ToastKind.success);
+        // Invite the chosen friends (each gets a live alert and can accept from Invitations)
+        final sent = await Future.wait([for (final friendId in _invited) _tryInvite(t.tournamentId, friendId)]);
+        final count = sent.where((ok) => ok).length;
+        showToast('Tournament created!',
+            message: count > 0 ? '$count friend${count > 1 ? 's' : ''} invited' : 'Now invite your friends', kind: ToastKind.success);
         if (mounted) Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => TournamentDetailScreen(tournamentId: t.tournamentId)));
       }
     } catch (err) {
@@ -109,6 +134,37 @@ class _TournamentFormScreenState extends State<TournamentFormScreen> {
       });
     }
   }
+
+  // One pill per friend; tap to pick or unpick. Picked friends glow gold and get an invite after "Create".
+  Widget _friendPicker() => Padding(
+        padding: const EdgeInsets.only(bottom: 18),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Padding(padding: const EdgeInsets.only(bottom: 8), child: Text('INVITE FRIENDS (${_invited.length} SELECTED)', style: AppText.label)),
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            for (final f in _friends) _friendChip(f, _invited.contains(f.playerId)),
+          ]),
+        ]),
+      );
+
+  Widget _friendChip(Person f, bool on) => InkWell(
+        borderRadius: BorderRadius.circular(99),
+        onTap: () => setState(() {
+          if (on) {
+            _invited.remove(f.playerId);
+          } else {
+            _invited.add(f.playerId);
+          }
+        }),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(99),
+            color: on ? AppColors.gold.withAlpha(41) : AppColors.card,
+            border: Border.all(color: on ? AppColors.gold : AppColors.cardBorder, width: 1.5),
+          ),
+          child: Text('${on ? '✓ ' : ''}${f.displayName}', style: TextStyle(color: on ? AppColors.gold : AppColors.textDim, fontWeight: FontWeight.w700)),
+        ),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -162,10 +218,15 @@ class _TournamentFormScreenState extends State<TournamentFormScreen> {
                   ]),
                   const SizedBox(height: 18),
                   OptionPicker<int>(
-                    label: 'Break between rounds',
+                    label: 'Time for each round',
                     value: _breakMinutes,
-                    options: [for (final n in [1, 2, 5, 10]) Option('$n min', n)],
+                    options: [for (final n in [5, 10, 15, 30]) Option('$n min', n)],
                     onChanged: (n) => setState(() => _breakMinutes = n),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: Text('Round 2 starts $_breakMinutes min after round 1, and so on — or earlier when both players are ready.',
+                        style: const TextStyle(color: AppColors.gold, fontSize: 13, fontWeight: FontWeight.w700)),
                   ),
                   if (!_editing)
                     OptionPicker<bool>(
@@ -174,6 +235,7 @@ class _TournamentFormScreenState extends State<TournamentFormScreen> {
                       options: const [Option('🎮 Yes, I play', true), Option('👀 Only organise', false)],
                       onChanged: (v) => setState(() => _join = v),
                     ),
+                  if (!_editing && _friends.isNotEmpty) _friendPicker(),
                   if (_error != null)
                     Padding(padding: const EdgeInsets.only(bottom: 12), child: Text(_error!, style: const TextStyle(color: AppColors.danger, fontWeight: FontWeight.w700))),
                   GradientButton(title: _editing ? 'Save Changes' : 'Create Tournament', icon: Icons.save, variant: ButtonVariant.gold, loading: _saving, onPressed: _save),

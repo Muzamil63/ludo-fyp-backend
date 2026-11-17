@@ -61,7 +61,7 @@ class RuleSet {
         captureEnabled = (_intOrNull(j['capture_enabled']) ?? 1) == 1,
         tokensToWin = _int(j['tokens_to_win']),
         turnSeconds = _int(j['turn_seconds']),
-        triesWhenAllHome = _intOrNull(j['tries_when_all_home']) ?? 3,
+        triesWhenAllHome = _intOrNull(j['tries_when_all_home']) ?? 4,
         sixBoostAfter = _intOrNull(j['six_boost_after']) ?? 6,
         isCustom = (_intOrNull(j['is_custom']) ?? 0) == 1;
 
@@ -256,7 +256,7 @@ class BracketMatch {
   final int? matchId; // null = not drawn yet
   final int roundNo;
   final int matchNo;
-  final DateTime? scheduledAt; // null = not drawn yet
+  final DateTime? scheduledAt; // drawn: its start time; upcoming: the planned time of the fixed schedule
   final String status; // waiting | in_progress | finished | cancelled | upcoming
   final List<Seat> seats;
   final int? winnerId;
